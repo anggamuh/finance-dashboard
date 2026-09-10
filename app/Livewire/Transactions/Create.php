@@ -6,7 +6,6 @@ use App\Models\Account;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -16,18 +15,14 @@ class Create extends Component
 
     public $transaction_date;
     public $transaction_number;
-
     public $type = 'expense';
-
     public $payment_method = 'Bank BCA';
-
     public $account_code = '';
-
     public $amount;
-
     public $description;
 
-    public $proof;
+    /** @var \Livewire\Features\SupportFileUploads\TemporaryUploadedFile[] */
+    public $proofs = [];
 
     protected function rules()
     {
@@ -37,24 +32,27 @@ class Create extends Component
             'amount'           => ['required', 'numeric', 'min:1'],
             'description'      => ['nullable', 'string'],
             'payment_method'   => ['required'],
-            'proof'            => ['nullable', 'image', 'max:4096'],
+            'proofs.*'         => ['nullable', 'image', 'max:4096'],
         ];
     }
 
     public function mount()
     {
         $this->transaction_date = now()->format('Y-m-d');
-
         $this->generateNumber();
     }
 
     public function generateNumber()
     {
         $today = now()->format('Ymd');
-
         $last = Transaction::whereDate('created_at', today())->count() + 1;
+        $this->transaction_number = 'TRX-'.$today.'-'.str_pad($last, 4, '0', STR_PAD_LEFT);
+    }
 
-        $this->transaction_number = 'TRX-'.$today.'-'.str_pad($last,4,'0',STR_PAD_LEFT);
+    public function removeProof($index)
+    {
+        unset($this->proofs[$index]);
+        $this->proofs = array_values($this->proofs);
     }
 
     public function save()
@@ -62,52 +60,33 @@ class Create extends Component
         $this->validate();
 
         DB::transaction(function () {
+            $account = Account::where('code', $this->account_code)->first();
 
-            $account = Account::where('code',$this->account_code)->first();
-
-            $proofPath = null;
-            $originalName = null;
-
-            if($this->proof){
-
-                $proofPath = $this->proof->store('proofs','public');
-
-                $originalName = $this->proof->getClientOriginalName();
-
-            }
-
-            Transaction::create([
-
+            $transaction = Transaction::create([
                 'account_code' => $account->code,
-
                 'account_name' => $account->name,
-
                 'transaction_number' => $this->transaction_number,
-
                 'transaction_date' => $this->transaction_date,
-
                 'transaction_type' => $this->type,
-
                 'description' => $this->description,
-
                 'payment_method' => $this->payment_method,
-
-                'proof_file' => $proofPath,
-
-                'proof_original_name' => $originalName,
-
                 'created_by' => Auth::id(),
-
                 'debit' => $this->type == 'expense'
                     ? $this->amount
                     : 0,
-
                 'credit' => $this->type == 'income'
                     ? $this->amount
                     : 0,
-
             ]);
 
+            foreach ($this->proofs as $proof) {
+                $path = $proof->store('proofs', 'public');
+
+                $transaction->attachments()->create([
+                    'file_path' => $path,
+                    'original_name' => $proof->getClientOriginalName(),
+                ]);
+            }
         });
 
         session()->flash(
@@ -120,10 +99,8 @@ class Create extends Component
 
     public function render()
     {
-        return view('livewire.transactions.create',[
-
-            'accounts' => Account::orderBy('code')->get()
-
+        return view('livewire.transactions.create', [
+            'accounts' => Account::orderBy('code')->get(),
         ])->layout('layouts.app');
     }
 }

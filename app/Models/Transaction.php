@@ -3,10 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Transaction extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'account_code',
         'account_name',
@@ -39,7 +43,11 @@ class Transaction extends Model
         return $this->belongsTo(Import::class);
     }
 
-    // Helper to get balance (debit - credit)
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(TransactionAttachment::class);
+    }
+
     public function getBalanceAttribute()
     {
         return $this->debit - $this->credit;

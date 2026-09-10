@@ -24,6 +24,7 @@ class OperatingExpenseDetail extends Component
             '5311' => 'Gaji & Tunjangan',
             '5313' => 'Beban Transportasi',
             '5314' => 'Beban Penyusutan & Amortisasi',
+            '5315' => 'Beban Sewa',
             '5317' => 'Beban Jasa',
             '5320' => 'Beban Pemasaran',
             '5322' => 'Beban Umum & Administrasi',

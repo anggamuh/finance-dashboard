@@ -14,6 +14,17 @@ class Index extends Component
 
     public $endDate;
 
+    protected array $monthNames = [
+        1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr',
+        5 => 'Mei', 6 => 'Jun', 7 => 'Jul', 8 => 'Agu',
+        9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des',
+    ];
+
+    // Kode COA yang sama persis dengan OperatingExpenseDetail
+    protected array $coaCodes = [
+        '5311', '5313', '5314', '5315', '5317', '5320', '5322', '5399',
+    ];
+
     public function mount()
     {
         $this->selectedMonth = now()->format('Y-m');
@@ -34,7 +45,12 @@ class Index extends Component
             ->where(function ($q) {
                 $q->whereNull('description')
                     ->orWhere('description', 'not like', 'Saldo per%');
-            });
+            })
+            ->where('debit', '>', 0)
+            ->whereRaw(
+                'LEFT(account_code, 4) IN (' . implode(',', array_fill(0, count($this->coaCodes), '?')) . ')',
+                $this->coaCodes
+            );
     }
 
     protected function monthlyExpenses(): array
@@ -61,7 +77,7 @@ class Index extends Component
             $key = $date->format('Y-m');
 
             $result[] = [
-                'label' => $date->translatedFormat('M Y'),
+                'label' => $this->monthNames[$date->month] . ' ' . $date->format('Y'),
                 'total' => (float) optional($rows->get($key))->total,
             ];
         }

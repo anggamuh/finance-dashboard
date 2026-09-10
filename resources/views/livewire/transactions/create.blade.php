@@ -218,21 +218,36 @@
                         <label
                             class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg py-8 cursor-pointer hover:border-emerald-500 dark:hover:border-emerald-500 transition">
                             <x-heroicon-o-cloud-arrow-up class="w-8 h-8 text-gray-400" />
-                            <span class="text-sm text-gray-500 dark:text-gray-400">Klik untuk unggah bukti</span>
-                            <input type="file" wire:model="proof" class="hidden">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Klik untuk unggah bukti (bisa lebih dari 1)</span>
+                            <input type="file" wire:model="proofs" multiple accept="image/*" class="hidden">
                         </label>
 
-                        <div wire:loading wire:target="proof" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                        <div wire:loading wire:target="proofs" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
                             Mengunggah...
                         </div>
 
-                        @error('proof')
+                        @error('proofs.*')
                             <p class="text-red-500 text-xs mt-2">{{ $message }}</p>
                         @enderror
 
-                        @if ($proof)
-                            <img src="{{ $proof->temporaryUrl() }}"
-                                class="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 max-h-80 w-full object-cover">
+                        @if (count($proofs))
+                            <div class="mt-4 space-y-2">
+                                @foreach ($proofs as $index => $file)
+                                    <div class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2">
+                                        <div class="flex items-center gap-2 min-w-0">
+                                            <x-heroicon-o-photo class="w-5 h-5 text-emerald-500 shrink-0" />
+                                            <span class="text-sm text-gray-700 dark:text-gray-200 truncate">{{ $file->getClientOriginalName() }}</span>
+                                        </div>
+                                        <button type="button" wire:click="removeProof({{ $index }})"
+                                            class="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-1 rounded transition">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                            Hapus
+                                        </button>
+                                    </div>
+                                @endforeach
+                            </div>
                         @endif
 
                     </div>

@@ -21,7 +21,7 @@
                 <div x-show="open" @click.outside="open=false" x-transition
                     class="absolute right-0 mt-3 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 w-52">
 
-                    <a href="#" class="block px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <a href="profile" class="block px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800">
 
                         Profile
 
