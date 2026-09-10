@@ -1,13 +1,13 @@
 <div class="space-y-6 text-gray-800 dark:text-white">
     {{-- HEADER --}}
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-3xl font-bold">Chart of Accounts</h1>
+            <h1 class="text-2xl font-bold sm:text-3xl">Master Akun</h1>
             <p class="text-gray-500 dark:text-gray-400">
                 Daftar akun yang digunakan pada sistem.
             </p>
         </div>
-        <button wire:click="openCreateModal" class="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">
+        <button type="button" wire:click="openCreateModal" class="app-btn-primary self-start sm:self-auto">
             <x-heroicon-o-plus class="w-5 h-5" />
             Tambah Akun
         </button>
@@ -19,7 +19,8 @@
                wire:model.live.debounce.300ms="search"
                placeholder="Cari kode atau nama akun..."
                class="w-full md:w-96 mb-5 px-4 py-2 rounded-lg border dark:bg-gray-900 text-gray-800 dark:text-white">
-        <table class="w-full text-sm">
+        <div class="overflow-x-auto">
+        <table class="min-w-[720px] w-full text-sm">
             <thead class="text-gray-500 border-b dark:border-gray-700">
                 <tr>
                     <th class="py-3 px-4">Kode</th>
@@ -83,6 +84,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
         <div class="mt-6">
             {{ $accounts->links() }}
         </div>
@@ -125,7 +127,7 @@
                                 <option value="asset">Aset</option>
                                 <option value="liability">Kewajiban</option>
                                 <option value="equity">Modal</option>
-                                <option value="revenue">Pendapatan</option>
+                                <option value="income">Pendapatan</option>
                                 <option value="expense">Beban</option>
                             </select>
                             @error('type') <small class="text-red-500">{{ $message }}</small> @enderror
@@ -152,11 +154,11 @@
                     </div>
 
                     <div class="flex justify-end gap-2 pt-2">
-                        <button wire:click="closeModal" class="px-5 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white transition-colors">
+                        <button type="button" wire:click="closeModal" class="app-btn-secondary">
                             Batal
                         </button>
-                        <button wire:click="save" wire:loading.attr="disabled" wire:target="save"
-                            class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white inline-flex items-center gap-2 transition-colors">
+                        <button type="button" wire:click="save" wire:loading.attr="disabled" wire:target="save"
+                            class="app-btn-primary">
                             <svg wire:loading wire:target="save" class="animate-spin h-4 w-4" viewBox="0 0 24 24">
                                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25" />
                                 <path fill="currentColor" class="opacity-75" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
@@ -171,25 +173,5 @@
 
         </div>
     @endif
-
-    @once
-        @push('scripts')
-            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-            <script>
-                document.addEventListener('livewire:initialized', () => {
-                    Livewire.on('swal', (data) => {
-                        const payload = Array.isArray(data) ? data[0] : data;
-                        Swal.fire({
-                            icon: payload.icon ?? 'success',
-                            title: payload.title ?? '',
-                            text: payload.text ?? '',
-                            timer: 2000,
-                            showConfirmButton: false,
-                        });
-                    });
-                });
-            </script>
-        @endpush
-    @endonce
 
 </div>

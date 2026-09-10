@@ -4,7 +4,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
         <div>
-            <h1 class="text-3xl font-bold text-white">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">
                 Edit Transaksi
             </h1>
             <p class="text-gray-400 mt-1">
@@ -222,12 +222,14 @@
                                 <div class="grid grid-cols-2 gap-3">
                                     @foreach ($transaction->attachments as $attachment)
                                         <div class="relative group" wire:key="attachment-{{ $attachment->id }}">
-                                            <a href="{{ route('proofs.show', $attachment->file_path) }}" target="_blank">
+                                            <a href="{{ route('proofs.show', $attachment->file_path) }}" target="_blank" rel="noopener noreferrer">
                                                 <img src="{{ route('proofs.show', $attachment->file_path) }}"
+                                                    alt="Bukti {{ $attachment->original_name ?? 'transaksi' }}"
                                                     class="rounded-lg border border-gray-200 dark:border-gray-700 h-28 w-full object-cover">
                                             </a>
                                             <button type="button" wire:click="deleteAttachment({{ $attachment->id }})"
                                                 wire:confirm="Hapus bukti ini?"
+                                                aria-label="Hapus bukti {{ $attachment->original_name ?? 'transaksi' }}"
                                                 class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 shadow">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />

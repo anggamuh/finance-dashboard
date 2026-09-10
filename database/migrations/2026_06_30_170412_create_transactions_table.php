@@ -13,7 +13,9 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('import_id')->nullable()->constrained('imports')->onDelete('cascade');
+            // Foreign key is added by the following imports migration, after
+            // the referenced table exists (required by MySQL).
+            $table->foreignId('import_id')->nullable()->index();
             $table->string('account_code');
             $table->string('account_name');
             $table->string('transaction_number')->nullable();

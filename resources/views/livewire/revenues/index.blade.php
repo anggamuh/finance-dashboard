@@ -98,8 +98,7 @@
                 </div>
 
                 @if($search || $monthFilter)
-                    <button wire:click="$set('search', '')" wire:click.prevent="$set('monthFilter', '')"
-                        onclick="this.blur()"
+                    <button type="button" wire:click="resetFilters"
                         class="text-sm text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 inline-flex items-center gap-1 self-start md:self-auto">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -346,25 +345,5 @@
 
         </div>
     @endif
-
-    @once
-        @push('scripts')
-            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-            <script>
-                document.addEventListener('livewire:initialized', () => {
-                    Livewire.on('swal', (data) => {
-                        const payload = Array.isArray(data) ? data[0] : data;
-                        Swal.fire({
-                            icon: payload.icon ?? 'success',
-                            title: payload.title ?? '',
-                            text: payload.text ?? '',
-                            timer: 2000,
-                            showConfirmButton: false,
-                        });
-                    });
-                });
-            </script>
-        @endpush
-    @endonce
 
 </div>

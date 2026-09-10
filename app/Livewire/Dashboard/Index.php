@@ -48,7 +48,7 @@ class Index extends Component
             })
             ->where('debit', '>', 0)
             ->whereRaw(
-                'LEFT(account_code, 4) IN (' . implode(',', array_fill(0, count($this->coaCodes), '?')) . ')',
+                'SUBSTR(account_code, 1, 4) IN ('.implode(',', array_fill(0, count($this->coaCodes), '?')).')',
                 $this->coaCodes
             );
     }
@@ -58,17 +58,14 @@ class Index extends Component
         $end = Carbon::createFromFormat('Y-m', $this->selectedMonth)->endOfMonth();
         $start = $end->copy()->subMonths(5)->startOfMonth();
 
-        $rows = $this->baseQuery()
-            ->selectRaw('YEAR(transaction_date) as year')
-            ->selectRaw('MONTH(transaction_date) as month')
-            ->selectRaw('SUM(debit) as total')
+        $totals = $this->baseQuery()
             ->whereBetween('transaction_date', [
                 $start->toDateString(),
                 $end->toDateString(),
             ])
-            ->groupByRaw('YEAR(transaction_date), MONTH(transaction_date)')
-            ->get()
-            ->keyBy(fn ($item) => sprintf('%04d-%02d', $item->year, $item->month));
+            ->get(['transaction_date', 'debit'])
+            ->groupBy(fn ($item) => $item->transaction_date->format('Y-m'))
+            ->map(fn ($items) => (float) $items->sum('debit'));
 
         $result = [];
 
@@ -77,8 +74,8 @@ class Index extends Component
             $key = $date->format('Y-m');
 
             $result[] = [
-                'label' => $this->monthNames[$date->month] . ' ' . $date->format('Y'),
-                'total' => (float) optional($rows->get($key))->total,
+                'label' => $this->monthNames[$date->month].' '.$date->format('Y'),
+                'total' => (float) ($totals->get($key) ?? 0),
             ];
         }
 

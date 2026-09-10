@@ -7,21 +7,42 @@
 
     <title>Finance Dashboard</title>
 
+    <script>
+        (() => {
+            const storedTheme = localStorage.getItem('finance-theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.classList.toggle('dark', storedTheme ? storedTheme === 'dark' : prefersDark);
+        })();
+    </script>
+
     @vite(['resources/css/app.css','resources/js/app.js'])
     @livewireStyles
 </head>
 
-<body class="bg-gray-100 dark:bg-gray-950">
+<body class="font-sans antialiased">
 
-<div x-data="{ sidebar: true }" class="flex">
+<div x-data="{
+        sidebar: true,
+        sidebarOpen: false,
+        darkMode: document.documentElement.classList.contains('dark'),
+        toggleTheme() {
+            this.darkMode = ! this.darkMode;
+            document.documentElement.classList.toggle('dark', this.darkMode);
+            localStorage.setItem('finance-theme', this.darkMode ? 'dark' : 'light');
+        }
+    }" class="flex min-h-screen min-w-0">
 
     <x-sidebar />
 
-    <div class="flex-1 flex flex-col min-h-screen">
+    <div x-cloak x-show="sidebarOpen" x-transition.opacity
+        class="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden"
+        @click="sidebarOpen = false" aria-hidden="true"></div>
+
+    <div class="flex min-h-screen min-w-0 flex-1 flex-col">
 
         <x-navbar />
 
-        <main class="p-8">
+        <main class="w-full min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
             {{ $slot }}
         </main>
 
@@ -57,23 +78,16 @@
 </script>
 @endif
 
-{{-- Global Confirm Delete --}}
 <script>
- function confirmDelete(id) {
-    Swal.fire({
-        title: 'Yakin hapus?',
-        text: "File ini akan dihapus permanen!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#ef4444',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Ya, hapus!'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            Livewire.dispatch('delete', { id: id });
-        }
-    })
-}
+    Livewire.on('swal', (event) => {
+        const payload = Array.isArray(event) ? event[0] : event;
+        Swal.fire({
+            icon: payload.icon ?? 'success', title: payload.title ?? '', text: payload.text ?? '',
+            timer: 2000, showConfirmButton: false,
+            background: document.documentElement.classList.contains('dark') ? '#111827' : '#ffffff',
+            color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+        });
+    });
 </script>
 
 @stack('scripts')

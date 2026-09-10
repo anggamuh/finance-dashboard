@@ -8,6 +8,7 @@ use App\Models\TransactionAttachment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 class Edit extends Component
@@ -17,39 +18,46 @@ class Edit extends Component
     public Transaction $transaction;
 
     public $transaction_date;
+
     public $transaction_number;
+
     public $type;
+
     public $payment_method;
+
     public $account_code;
+
     public $amount;
+
     public $description;
 
-    /** @var \Livewire\Features\SupportFileUploads\TemporaryUploadedFile[] */
+    /** @var TemporaryUploadedFile[] */
     public $proofs = [];
 
     public function mount(Transaction $transaction)
-{
-    $this->transaction = $transaction;
-    $this->transaction_date = $transaction->transaction_date->format('Y-m-d');
-    $this->transaction_number = $transaction->transaction_number;
+    {
+        $this->transaction = $transaction;
+        $this->transaction_date = $transaction->transaction_date->format('Y-m-d');
+        $this->transaction_number = $transaction->transaction_number;
 
-    // Normalisasi type dari debit/credit, bukan dari transaction_type mentah
-    $this->type = $transaction->credit > 0 ? 'income' : 'expense';
+        // Normalisasi type dari debit/credit, bukan dari transaction_type mentah
+        $this->type = $transaction->credit > 0 ? 'income' : 'expense';
 
-    $this->payment_method = $transaction->payment_method;
-    $this->account_code = $transaction->account_code;
-    $this->description = $transaction->description;
-    $this->amount = $transaction->debit > 0
-        ? $transaction->debit
-        : $transaction->credit;
-}
+        $this->payment_method = $transaction->payment_method;
+        $this->account_code = $transaction->account_code;
+        $this->description = $transaction->description;
+        $this->amount = $transaction->debit > 0
+            ? $transaction->debit
+            : $transaction->credit;
+    }
 
     protected function rules()
     {
         return [
             'transaction_date' => 'required|date',
-            'account_code' => 'required',
-            'payment_method' => 'required',
+            'account_code' => 'required|exists:accounts,code',
+            'type' => 'required|in:expense,income',
+            'payment_method' => 'required|in:Bank BCA,Petty Cash,Transfer,QRIS,Tunai',
             'amount' => 'required|numeric|min:1',
             'description' => 'nullable',
             'proofs.*' => 'nullable|image|max:4096',

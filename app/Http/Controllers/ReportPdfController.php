@@ -10,8 +10,9 @@ class ReportPdfController extends Controller
 {
     public function operatingExpense(Request $request)
     {
-        $dateFrom = $request->from;
-        $dateTo   = $request->to;
+        $dates = $this->validatePeriod($request);
+        $dateFrom = $dates['from'];
+        $dateTo = $dates['to'];
 
         $coa = [
             '5311' => 'Gaji & Tunjangan',
@@ -33,7 +34,7 @@ class ReportPdfController extends Controller
 
             ->where(function ($q) {
                 $q->whereNull('description')
-                  ->orWhere('description', 'not like', 'Saldo per%');
+                    ->orWhere('description', 'not like', 'Saldo per%');
             })
 
             ->whereBetween('transaction_date', [
@@ -43,18 +44,18 @@ class ReportPdfController extends Controller
 
             ->where('debit', '>', 0)
 
-            ->selectRaw("
-                LEFT(account_code,4) as account_code,
+            ->selectRaw('
+                SUBSTR(account_code, 1, 4) as account_code,
                 SUM(debit) as total
-            ")
+            ')
 
-            ->groupByRaw("LEFT(account_code,4)")
+            ->groupByRaw('SUBSTR(account_code, 1, 4)')
 
             ->get()
 
             ->map(function ($item) use ($coa) {
 
-                return (object)[
+                return (object) [
                     'account_code' => $item->account_code,
                     'account_name' => $coa[$item->account_code] ?? '-',
                     'total' => $item->total,
@@ -62,7 +63,7 @@ class ReportPdfController extends Controller
 
             })
 
-            ->filter(fn($x) => isset($coa[$x->account_code]))
+            ->filter(fn ($x) => isset($coa[$x->account_code]))
             ->values();
 
         $grandTotal = $expenses->sum('total');
@@ -84,8 +85,9 @@ class ReportPdfController extends Controller
 
     public function operatingExpenseDetail(Request $request)
     {
-        $dateFrom = $request->from;
-        $dateTo   = $request->to;
+        $dates = $this->validatePeriod($request);
+        $dateFrom = $dates['from'];
+        $dateTo = $dates['to'];
 
         // Mapping COA Laporan
         $coa = [
@@ -114,8 +116,8 @@ class ReportPdfController extends Controller
                 $dateTo,
             ])
             ->where('debit', '>', 0)
-            ->selectRaw('LEFT(account_code,4) as account_code, SUM(debit) as total')
-            ->groupByRaw('LEFT(account_code,4)')
+            ->selectRaw('SUBSTR(account_code, 1, 4) as account_code, SUM(debit) as total')
+            ->groupByRaw('SUBSTR(account_code, 1, 4)')
             ->orderBy('account_code')
             ->get()
             ->map(function ($item) use ($coa) {
@@ -125,7 +127,7 @@ class ReportPdfController extends Controller
                     'total' => $item->total,
                 ];
             })
-            ->filter(fn($x) => isset($coa[$x->account_code]))
+            ->filter(fn ($x) => isset($coa[$x->account_code]))
             ->values();
 
         $expenses = [];
@@ -146,7 +148,7 @@ class ReportPdfController extends Controller
                     $dateTo,
                 ])
                 ->where('debit', '>', 0)
-                ->whereRaw('LEFT(account_code, 4) = ?', [$parent->account_code])
+                ->whereRaw('SUBSTR(account_code, 1, 4) = ?', [$parent->account_code])
                 ->selectRaw('account_name, SUM(debit) as total, COUNT(*) as count')
                 ->groupBy('account_name')
                 ->orderByRaw('SUM(debit) DESC')
@@ -182,5 +184,13 @@ class ReportPdfController extends Controller
         return $pdf
             ->setPaper('a4', 'portrait')
             ->stream('beban-operasional-detail.pdf');
+    }
+
+    private function validatePeriod(Request $request): array
+    {
+        return $request->validate([
+            'from' => ['required', 'date'],
+            'to' => ['required', 'date', 'after_or_equal:from'],
+        ]);
     }
 }

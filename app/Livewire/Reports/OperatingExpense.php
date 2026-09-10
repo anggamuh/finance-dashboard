@@ -21,7 +21,7 @@ class OperatingExpense extends Component
     {
         // Mapping COA Laporan
         $coa = [
-             '5311' => 'Gaji & Tunjangan',
+            '5311' => 'Gaji & Tunjangan',
             '5313' => 'Beban Transportasi',
             '5314' => 'Beban Penyusutan & Amortisasi',
             '5315' => 'Beban Sewa',
@@ -56,11 +56,11 @@ class OperatingExpense extends Component
 
             // Kelompokkan berdasarkan 4 digit kode akun
             ->selectRaw('
-                LEFT(account_code,4) as account_code,
+                SUBSTR(account_code, 1, 4) as account_code,
                 SUM(debit) as total
             ')
 
-            ->groupByRaw('LEFT(account_code,4)')
+            ->groupByRaw('SUBSTR(account_code, 1, 4)')
 
             ->orderBy('account_code')
 

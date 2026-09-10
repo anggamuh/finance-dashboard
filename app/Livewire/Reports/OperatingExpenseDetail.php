@@ -29,7 +29,6 @@ class OperatingExpenseDetail extends Component
             '5320' => 'Beban Pemasaran',
             '5322' => 'Beban Umum & Administrasi',
             '5399' => 'Beban Usaha Lainnya',
-            ''
         ];
 
         // Get parent totals (same way as working OperatingExpense)
@@ -48,10 +47,10 @@ class OperatingExpenseDetail extends Component
             ])
             ->where('debit', '>', 0)
             ->selectRaw('
-                LEFT(account_code,4) as account_code,
+                SUBSTR(account_code, 1, 4) as account_code,
                 SUM(debit) as total
             ')
-            ->groupByRaw('LEFT(account_code,4)')
+            ->groupByRaw('SUBSTR(account_code, 1, 4)')
             ->orderBy('account_code')
             ->get()
             ->map(function ($item) use ($coa) {
@@ -84,7 +83,7 @@ class OperatingExpenseDetail extends Component
                     $this->dateTo,
                 ])
                 ->where('debit', '>', 0)
-                ->whereRaw('LEFT(account_code, 4) = ?', [$parent->account_code])
+                ->whereRaw('SUBSTR(account_code, 1, 4) = ?', [$parent->account_code])
                 ->selectRaw('
                     account_name,
                     SUM(debit) as total,
@@ -120,4 +119,3 @@ class OperatingExpenseDetail extends Component
         )->layout('layouts.app');
     }
 }
-

@@ -19,6 +19,7 @@ class Index extends Component
     public $showFormModal = false;
 
     public $dateFrom;
+
     public $dateTo;
 
     public $qty = 0;
@@ -31,8 +32,8 @@ class Index extends Component
 
     protected $rules = [
 
-            'dateFrom' => 'required|date',
-    'dateTo' => 'required|date|after_or_equal:dateFrom',
+        'dateFrom' => 'required|date',
+        'dateTo' => 'required|date|after_or_equal:dateFrom',
 
         'qty' => 'required|integer|min:1',
 
@@ -52,15 +53,21 @@ class Index extends Component
         $this->resetPage();
     }
 
-   public function openCreateModal()
-{
-    $this->resetForm();
+    public function resetFilters()
+    {
+        $this->reset(['search', 'monthFilter']);
+        $this->resetPage();
+    }
 
-    $this->dateFrom = now()->startOfWeek()->format('Y-m-d');
-    $this->dateTo = now()->endOfWeek()->format('Y-m-d');
+    public function openCreateModal()
+    {
+        $this->resetForm();
 
-    $this->showFormModal = true;
-}
+        $this->dateFrom = now()->startOfWeek()->format('Y-m-d');
+        $this->dateTo = now()->endOfWeek()->format('Y-m-d');
+
+        $this->showFormModal = true;
+    }
 
     public function closeModal()
     {
@@ -70,23 +77,23 @@ class Index extends Component
     }
 
     public function resetForm()
-{
-    $this->reset([
-        'editingId',
+    {
+        $this->reset([
+            'editingId',
 
-        'dateFrom',
-        'dateTo',
+            'dateFrom',
+            'dateTo',
 
-        'qty',
-        'amount',
-        'notes',
-    ]);
+            'qty',
+            'amount',
+            'notes',
+        ]);
 
-    $this->qty = 0;
-    $this->amount = 0;
+        $this->qty = 0;
+        $this->amount = 0;
 
-    $this->resetErrorBag();
-}
+        $this->resetErrorBag();
+    }
 
     public function save()
     {
@@ -94,25 +101,25 @@ class Index extends Component
 
         Revenue::updateOrCreate(
 
-    [
-        'id' => $this->editingId,
-    ],
+            [
+                'id' => $this->editingId,
+            ],
 
-    [
+            [
 
-        'date_from' => $this->dateFrom,
+                'date_from' => $this->dateFrom,
 
-        'date_to' => $this->dateTo,
+                'date_to' => $this->dateTo,
 
-        'qty' => $this->qty,
+                'qty' => $this->qty,
 
-        'amount' => $this->amount,
+                'amount' => $this->amount,
 
-        'notes' => $this->notes,
+                'notes' => $this->notes,
 
-    ]
+            ]
 
-);
+        );
 
         $this->dispatch('swal', [
 
@@ -130,23 +137,23 @@ class Index extends Component
     }
 
     public function edit($id)
-{
-    $data = Revenue::findOrFail($id);
+    {
+        $data = Revenue::findOrFail($id);
 
-    $this->editingId = $data->id;
+        $this->editingId = $data->id;
 
-    $this->dateFrom = $data->date_from->format('Y-m-d');
+        $this->dateFrom = $data->date_from->format('Y-m-d');
 
-    $this->dateTo = $data->date_to->format('Y-m-d');
+        $this->dateTo = $data->date_to->format('Y-m-d');
 
-    $this->qty = $data->qty;
+        $this->qty = $data->qty;
 
-    $this->amount = $data->amount;
+        $this->amount = $data->amount;
 
-    $this->notes = $data->notes;
+        $this->notes = $data->notes;
 
-    $this->showFormModal = true;
-}
+        $this->showFormModal = true;
+    }
 
     public function delete($id)
     {

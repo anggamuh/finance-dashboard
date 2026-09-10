@@ -13,8 +13,10 @@ class ProofFileController extends Controller
      */
     public function show(string $path): StreamedResponse
     {
-        // Prevent path traversal (e.g. ../../.env)
-        $path = str_replace(['..', "\0"], '', $path);
+        abort_if(str_contains($path, '..') || str_contains($path, "\0"), 404);
+
+        $path = ltrim(str_replace('\\', '/', $path), '/');
+        abort_unless(str_starts_with($path, 'proofs/'), 404);
 
         abort_unless(Storage::disk('public')->exists($path), 404);
 

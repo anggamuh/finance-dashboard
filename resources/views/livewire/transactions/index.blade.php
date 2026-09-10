@@ -41,7 +41,7 @@
 
                         <x-heroicon-o-arrow-path class="w-5 h-5"/>
 
-                        Restore ({{ count($selected) }})
+                        Pulihkan ({{ count($selected) }})
 
                     </button>
 
@@ -57,7 +57,7 @@
 
                 <x-heroicon-o-archive-box class="w-5 h-5"/>
 
-                {{ $showTrash ? 'Kembali' : 'Trash' }}
+                {{ $showTrash ? 'Kembali' : 'Sampah' }}
 
             </button>
 
@@ -74,7 +74,7 @@
 
                     <x-heroicon-o-clipboard-document class="w-5 h-5"/>
 
-                    Paste Data
+                    Tempel Data
 
                 </button>
 
@@ -351,8 +351,8 @@
                                 @if($attachment)
 
                                     <a
-                                        href="{{ asset('storage/'.$attachment->file_path) }}"
-                                        target="_blank"
+                                        href="{{ route('proofs.show', $attachment->file_path) }}"
+                                        target="_blank" rel="noopener noreferrer"
                                         class="text-emerald-600 dark:text-emerald-400 hover:underline text-sm">
 
                                         Lihat
@@ -380,6 +380,7 @@
                                         {{-- EDIT --}}
                                         <a
                                             href="{{ route('transactions.edit', $trx->id) }}"
+                                            aria-label="Edit transaksi"
                                             class="inline-flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition">
 
                                             <x-heroicon-o-pencil-square class="w-5 h-5"/>
@@ -391,6 +392,7 @@
                                         <button
                                             type="button"
                                             onclick="confirmDelete({{ $trx->id }})"
+                                            aria-label="Hapus transaksi"
                                             class="inline-flex items-center justify-center p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition">
 
                                             <x-heroicon-o-trash class="w-5 h-5"/>
@@ -401,7 +403,9 @@
 
                                         {{-- RESTORE --}}
                                         <button
+                                            type="button"
                                             wire:click="restore({{ $trx->id }})"
+                                            aria-label="Pulihkan transaksi"
                                             class="inline-flex items-center justify-center p-2 text-emerald-600 hover:bg-emerald-50 rounded">
 
                                             <x-heroicon-o-arrow-path class="w-5 h-5"/>
@@ -411,8 +415,10 @@
 
                                         {{-- FORCE DELETE --}}
                                         <button
+                                            type="button"
                                             wire:click="forceDelete({{ $trx->id }})"
                                             onclick="return confirm('Hapus permanen?')"
+                                            aria-label="Hapus transaksi secara permanen"
                                             class="inline-flex items-center justify-center p-2 text-red-700 hover:bg-red-50 rounded">
 
                                             <x-heroicon-o-x-circle class="w-5 h-5"/>
@@ -1081,8 +1087,6 @@
         SCRIPTS
         ============================================================ --}}
     @push('scripts')
-
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
         <script>
 

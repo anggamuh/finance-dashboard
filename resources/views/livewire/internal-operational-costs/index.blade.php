@@ -328,24 +328,4 @@
         </div>
     @endif
 
-    @once
-        @push('scripts')
-            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-            <script>
-                document.addEventListener('livewire:initialized', () => {
-                    Livewire.on('swal', (data) => {
-                        const payload = Array.isArray(data) ? data[0] : data;
-                        Swal.fire({
-                            icon: payload.icon ?? 'success',
-                            title: payload.title ?? '',
-                            text: payload.text ?? '',
-                            timer: 2000,
-                            showConfirmButton: false,
-                        });
-                    });
-                });
-            </script>
-        @endpush
-    @endonce
-
 </div>

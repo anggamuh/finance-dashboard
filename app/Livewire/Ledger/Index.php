@@ -12,10 +12,15 @@ class Index extends Component
     use WithPagination;
 
     public $selectedMonth;
+
     public $dateFrom;
+
     public $dateTo;
+
     public $selectedAccount = '';
+
     public $search = '';
+
     public $perPage = 25;
 
     public function mount()
@@ -28,7 +33,7 @@ class Index extends Component
     {
         $date = Carbon::createFromFormat('Y-m', $this->selectedMonth);
         $this->dateFrom = $date->copy()->startOfMonth()->toDateString();
-        $this->dateTo   = $date->copy()->endOfMonth()->toDateString();
+        $this->dateTo = $date->copy()->endOfMonth()->toDateString();
         $this->resetPage();
     }
 
@@ -63,26 +68,21 @@ class Index extends Component
     /** Ringkasan debit/kredit semua akun dalam periode (tampil saat belum pilih akun). */
     public function getSummaryProperty()
     {
-        return $this->accounts
-            ->when($this->search, fn ($c) => $c->filter(fn ($a) =>
-                str_contains(strtolower($a->account_code), strtolower($this->search)) ||
-                str_contains(strtolower($a->account_name), strtolower($this->search))
-            ))
-            ->map(function ($acc) {
-                $period = Transaction::where('account_code', $acc->account_code)
-                    ->whereDate('transaction_date', '>=', $this->dateFrom)
-                    ->whereDate('transaction_date', '<=', $this->dateTo)
-                    ->selectRaw('COALESCE(SUM(debit),0) as debit, COALESCE(SUM(credit),0) as credit')
-                    ->first();
+        return Transaction::query()
+            ->whereDate('transaction_date', '>=', $this->dateFrom)
+            ->whereDate('transaction_date', '<=', $this->dateTo)
+            ->when($this->search, function ($query) {
+                $search = '%'.$this->search.'%';
 
-                return (object) [
-                    'account_code' => $acc->account_code,
-                    'account_name' => $acc->account_name,
-                    'debit'        => (float) ($period->debit ?? 0),
-                    'credit'       => (float) ($period->credit ?? 0),
-                ];
+                $query->where(function ($query) use ($search) {
+                    $query->where('account_code', 'like', $search)
+                        ->orWhere('account_name', 'like', $search);
+                });
             })
-            ->values();
+            ->selectRaw('account_code, account_name, COALESCE(SUM(debit), 0) as debit, COALESCE(SUM(credit), 0) as credit')
+            ->groupBy('account_code', 'account_name')
+            ->orderBy('account_code')
+            ->get();
     }
 
     /** Detail transaksi untuk akun yang dipilih (tanpa saldo berjalan). */
@@ -105,7 +105,7 @@ class Index extends Component
 
         return [
             'account' => $account,
-            'rows'    => $rows,
+            'rows' => $rows,
         ];
     }
 
@@ -113,7 +113,7 @@ class Index extends Component
     {
         return view('livewire.ledger.index', [
             'summary' => $this->selectedAccount ? null : $this->summary,
-            'ledger'  => $this->selectedAccount ? $this->ledger : null,
+            'ledger' => $this->selectedAccount ? $this->ledger : null,
         ])->layout('layouts.app');
     }
 }

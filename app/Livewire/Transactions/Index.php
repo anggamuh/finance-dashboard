@@ -5,6 +5,7 @@ namespace App\Livewire\Transactions;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -14,8 +15,11 @@ class Index extends Component
     use WithPagination;
 
     public $search = '';
+
     public $perPage = 10;
+
     public $dateFrom = '';
+
     public $dateTo = '';
 
     // ============================================================
@@ -23,7 +27,9 @@ class Index extends Component
     // ============================================================
 
     public array $selected = [];
+
     public bool $selectAll = false;
+
     public bool $showTrash = false;
 
     /**
@@ -64,8 +70,6 @@ class Index extends Component
     public ?string $pastePeriodEnd = null;
 
     public int $pasteAdjusted = 0;
-
-
 
     // ============================================================
     // MOUNT
@@ -112,7 +116,7 @@ class Index extends Component
 
         return $query
             ->whereRaw(
-                'LEFT(account_code, 4) IN (' .
+                'SUBSTR(account_code, 1, 4) IN ('.
                 implode(
                     ',',
                     array_fill(
@@ -120,7 +124,7 @@ class Index extends Component
                         count($this->coaCodes),
                         '?'
                     )
-                ) .
+                ).
                 ')',
                 $this->coaCodes
             )
@@ -142,18 +146,16 @@ class Index extends Component
                             'like',
                             "%{$this->search}%"
                         )
-
-                        ->orWhere(
-                            'transaction_number',
-                            'like',
-                            "%{$this->search}%"
-                        )
-
-                        ->orWhere(
-                            'description',
-                            'like',
-                            "%{$this->search}%"
-                        );
+                            ->orWhere(
+                                'transaction_number',
+                                'like',
+                                "%{$this->search}%"
+                            )
+                            ->orWhere(
+                                'description',
+                                'like',
+                                "%{$this->search}%"
+                            );
 
                     });
                 }
@@ -250,7 +252,7 @@ class Index extends Component
      */
     public function updatedSelectAll($value)
     {
-        if (!$value) {
+        if (! $value) {
 
             $this->selected = [];
 
@@ -291,13 +293,13 @@ class Index extends Component
     #[On('delete')]
     public function delete($id = null)
     {
-        if (!$id) {
+        if (! $id) {
             return;
         }
 
         $transaction = Transaction::find($id);
 
-        if (!$transaction) {
+        if (! $transaction) {
 
             session()->flash(
                 'error',
@@ -402,9 +404,15 @@ class Index extends Component
 
     public function forceDelete($id)
     {
-        Transaction::onlyTrashed()
-            ->findOrFail($id)
-            ->forceDelete();
+        $transaction = Transaction::onlyTrashed()
+            ->with('attachments')
+            ->findOrFail($id);
+
+        foreach ($transaction->attachments as $attachment) {
+            Storage::disk('public')->delete($attachment->file_path);
+        }
+
+        $transaction->forceDelete();
 
         session()->flash(
             'success',
@@ -442,7 +450,6 @@ class Index extends Component
 
         $this->pasteAdjusted = 0;
 
-
         $this->resetErrorBag();
     }
 
@@ -457,7 +464,6 @@ class Index extends Component
         $this->pastePreview = [];
 
         $this->pasteAdjusted = 0;
-
 
         if (trim($this->pasteData) === '') {
 
@@ -477,7 +483,7 @@ class Index extends Component
             $this->pasteData
         );
 
-        if (!$period) {
+        if (! $period) {
 
             $this->addError(
                 'pasteData',
@@ -597,8 +603,7 @@ class Index extends Component
             $columns = array_values(
                 array_filter(
                     $columns,
-                    fn ($value) =>
-                        $value !== ''
+                    fn ($value) => $value !== ''
                 )
             );
 
@@ -766,7 +771,7 @@ class Index extends Component
             // 24/08/2026
             // ====================================================
 
-            if (!$originalDate) {
+            if (! $originalDate) {
 
                 $transactionDate =
                     $periodStart->copy();
@@ -810,7 +815,7 @@ class Index extends Component
 
             $description = $this->buildDescription($columns);
 
-            if (!$description) {
+            if (! $description) {
                 continue;
             }
 
@@ -837,10 +842,9 @@ class Index extends Component
                 $category
             );
 
-            if (!$description) {
+            if (! $description) {
                 continue;
             }
-
 
             // ====================================================
             // PREVIEW
@@ -848,33 +852,25 @@ class Index extends Component
 
             $this->pastePreview[] = [
 
-                'date' =>
-                    $transactionDate->format(
-                        'Y-m-d'
-                    ),
+                'date' => $transactionDate->format(
+                    'Y-m-d'
+                ),
 
-                'date_display' =>
-                    $transactionDate->format(
-                        'd/m/Y'
-                    ),
+                'date_display' => $transactionDate->format(
+                    'd/m/Y'
+                ),
 
-                'description' =>
-                    $description,
+                'description' => $description,
 
-                'amount' =>
-                    $amount,
+                'amount' => $amount,
 
-                'company' =>
-                    $company,
+                'company' => $company,
 
-                'branch' =>
-                    $branch,
+                'branch' => $branch,
 
-                'category' =>
-                    $category,
+                'category' => $category,
 
-                'adjusted' =>
-                    $adjusted,
+                'adjusted' => $adjusted,
 
                 // Akun dipilih per transaksi pada tabel preview.
                 'account_code' => null,
@@ -945,7 +941,7 @@ class Index extends Component
         // ========================================================
 
         return [
-            trim($line)
+            trim($line),
         ];
     }
 
@@ -988,19 +984,19 @@ class Index extends Component
 
         $pattern =
             '/periode\s+('
-            . $monthPattern
-            . ')\s+'
-            . '(\d{1,2})'
-            . '\s*[-–—]\s*'
-            . '(\d{1,2})'
-            . '\s+('
-            . $monthPattern
-            . ')\s+'
-            . '(\d{4})'
-            . '/iu';
+            .$monthPattern
+            .')\s+'
+            .'(\d{1,2})'
+            .'\s*[-–—]\s*'
+            .'(\d{1,2})'
+            .'\s+('
+            .$monthPattern
+            .')\s+'
+            .'(\d{4})'
+            .'/iu';
 
         if (
-            !preg_match(
+            ! preg_match(
                 $pattern,
                 $text,
                 $matches
@@ -1057,15 +1053,13 @@ class Index extends Component
 
             return [
 
-                'start' =>
-                    $start->format(
-                        'Y-m-d'
-                    ),
+                'start' => $start->format(
+                    'Y-m-d'
+                ),
 
-                'end' =>
-                    $end->format(
-                        'Y-m-d'
-                    ),
+                'end' => $end->format(
+                    'Y-m-d'
+                ),
 
             ];
 
@@ -1128,8 +1122,7 @@ class Index extends Component
     ): ?float {
 
         foreach (
-            array_reverse($columns)
-            as $column
+            array_reverse($columns) as $column
         ) {
 
             $value = trim(
@@ -1143,7 +1136,7 @@ class Index extends Component
              */
 
             if (
-                !preg_match(
+                ! preg_match(
                     '/^(?:Rp\.?\s*)?([\d\.,]+)$/i',
                     $value,
                     $match
@@ -1251,7 +1244,7 @@ class Index extends Component
         ?string $category = null
     ): ?string {
 
-        if (!$description) {
+        if (! $description) {
             return null;
         }
 
@@ -1295,7 +1288,7 @@ class Index extends Component
         $categoryPattern = '(?:ATK\s*&\s*REFUND\s+PESANAN|GAJI)';
 
         $parts = preg_split(
-            '/\s*[-:]\s*' . $categoryPattern . '\s*[-:]\s*/iu',
+            '/\s*[-:]\s*'.$categoryPattern.'\s*[-:]\s*/iu',
             $description
         );
 
@@ -1364,7 +1357,7 @@ class Index extends Component
             if (empty($row['account_code'])) {
                 $this->addError(
                     'pasteData',
-                    'Masih ada transaksi yang belum dipilihkan akun pada baris ' . ($index + 1) . '.'
+                    'Masih ada transaksi yang belum dipilihkan akun pada baris '.($index + 1).'.'
                 );
 
                 return;
@@ -1389,10 +1382,10 @@ class Index extends Component
 
         // Pastikan semua kode akun yang dipilih benar-benar ada.
         foreach ($this->pastePreview as $index => $row) {
-            if (!isset($accounts[$row['account_code']])) {
+            if (! isset($accounts[$row['account_code']])) {
                 $this->addError(
                     'pasteData',
-                    'Akun pada baris ' . ($index + 1) . ' tidak ditemukan.'
+                    'Akun pada baris '.($index + 1).' tidak ditemukan.'
                 );
 
                 return;

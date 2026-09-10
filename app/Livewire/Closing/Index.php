@@ -76,7 +76,7 @@ class Index extends Component
                 ->where(function ($q) use ($coa) {
 
                     foreach ($coa as $code) {
-                        $q->orWhereRaw('LEFT(account_code,4)=?', [$code]);
+                        $q->orWhereRaw('SUBSTR(account_code, 1, 4) = ?', [$code]);
                     }
 
                 })
@@ -102,7 +102,7 @@ class Index extends Component
 
             $rows[] = [
 
-                'month' => Carbon::create()->month($month)->translatedFormat('F'),
+                'month' => Carbon::create()->locale('id')->month($month)->translatedFormat('F'),
 
                 'omzet' => $omzet,
 

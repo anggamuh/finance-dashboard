@@ -13,6 +13,7 @@ use Livewire\Component;
 class Index extends Component
 {
     public $month;
+
     public $year;
 
     public $search = '';
@@ -66,6 +67,8 @@ class Index extends Component
     public function saveOpeningBalance()
     {
         $this->validate([
+            'year' => ['required', 'integer', 'between:2000,2100'],
+            'month' => ['required', 'integer', 'between:1,12'],
             'openingBalance' => [
                 'required',
                 'numeric',

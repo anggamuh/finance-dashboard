@@ -3,20 +3,24 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AccurateImport extends Model
 {
     protected $fillable = [
-        'original_name',
-        'file_name',
-        'file_path',
-        'file_size',
+        'title',
         'period',
-        'status',
-        'created_by',
+        'original_name',
+        'file',
+        'user_id',
     ];
 
     protected $casts = [
-        'created_at'=>'datetime',
+        'created_at' => 'datetime',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

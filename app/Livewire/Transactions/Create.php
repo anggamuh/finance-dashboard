@@ -7,6 +7,7 @@ use App\Models\Transaction;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 class Create extends Component
@@ -14,25 +15,32 @@ class Create extends Component
     use WithFileUploads;
 
     public $transaction_date;
+
     public $transaction_number;
+
     public $type = 'expense';
+
     public $payment_method = 'Bank BCA';
+
     public $account_code = '';
+
     public $amount;
+
     public $description;
 
-    /** @var \Livewire\Features\SupportFileUploads\TemporaryUploadedFile[] */
+    /** @var TemporaryUploadedFile[] */
     public $proofs = [];
 
     protected function rules()
     {
         return [
             'transaction_date' => ['required', 'date'],
-            'account_code'     => ['required'],
-            'amount'           => ['required', 'numeric', 'min:1'],
-            'description'      => ['nullable', 'string'],
-            'payment_method'   => ['required'],
-            'proofs.*'         => ['nullable', 'image', 'max:4096'],
+            'account_code' => ['required', 'exists:accounts,code'],
+            'type' => ['required', 'in:expense,income'],
+            'amount' => ['required', 'numeric', 'min:1'],
+            'description' => ['nullable', 'string'],
+            'payment_method' => ['required', 'in:Bank BCA,Petty Cash,Transfer,QRIS,Tunai'],
+            'proofs.*' => ['nullable', 'image', 'max:4096'],
         ];
     }
 

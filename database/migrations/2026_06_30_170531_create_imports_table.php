@@ -19,6 +19,13 @@ return new class extends Migration
             $table->text('error_message')->nullable();
             $table->timestamps();
         });
+
+        Schema::table('transactions', function (Blueprint $table) {
+            $table->foreign('import_id')
+                ->references('id')
+                ->on('imports')
+                ->cascadeOnDelete();
+        });
     }
 
     /**
@@ -26,6 +33,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::table('transactions', function (Blueprint $table) {
+            $table->dropForeign(['import_id']);
+        });
+
         Schema::dropIfExists('imports');
     }
 };

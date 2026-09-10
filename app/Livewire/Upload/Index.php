@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Upload;
 
+use App\Models\Account;
 use App\Models\Import;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
@@ -10,7 +11,6 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
-use App\Models\Account;
 use Livewire\WithFileUploads;
 
 class Index extends Component
@@ -31,11 +31,10 @@ class Index extends Component
 
     public function importCsv()
     {
-        Log::info('Upload action started', ['file' => optional($this->file)->getClientOriginalName()]);
-
         $this->uploadMessage = '';
         $this->uploadError = '';
         $this->isUploading = true;
+        $storedPath = null;
 
         try {
             // Validasi file
@@ -50,10 +49,9 @@ class Index extends Component
             }
 
             $path = $this->file->store('imports', 'public');
+            $storedPath = $path;
 
             $filePath = Storage::disk('public')->path($path);
-
-            Log::info('STEP 1');
 
             if (! file_exists($filePath)) {
                 throw new \Exception('File tidak tersimpan dengan benar');
@@ -143,12 +141,12 @@ class Index extends Component
             $import = null;
 
             try {
-               $import = Import::create([
-    'file_name'  => $this->file->getClientOriginalName(),
-    'file_path'  => $path,
-    'total_rows' => count($transactions),
-    'status'     => 'processing',
-]);
+                $import = Import::create([
+                    'file_name' => $this->file->getClientOriginalName(),
+                    'file_path' => $path,
+                    'total_rows' => count($transactions),
+                    'status' => 'processing',
+                ]);
 
                 // Add import_id ke semua transactions
                 $transactions = array_map(function ($transaction) use ($import) {
@@ -164,7 +162,6 @@ class Index extends Component
 
                 $import->update(['status' => 'completed']);
                 DB::commit();
-
 
                 $this->uploadMessage = 'Import berhasil: '.count($transactions).' transaksi ditambahkan.';
                 $this->file = null;
@@ -193,6 +190,9 @@ class Index extends Component
             $this->uploadError = $e->errors()['file'][0] ?? 'Validasi file gagal';
         } catch (\Exception $e) {
             $this->isUploading = false;
+            if ($storedPath) {
+                Storage::disk('public')->delete($storedPath);
+            }
             Log::error('Upload import exception: '.$e->getMessage(), [
                 'file' => optional($this->file)->getClientOriginalName(),
             ]);
@@ -209,9 +209,14 @@ class Index extends Component
         $value = trim($value);
         // Kalau ada titik dan koma, yang belakang adalah decimal separator
         if (strpos($value, '.') !== false && strpos($value, ',') !== false) {
-            // 1.000.000,50 format
-            $value = str_replace('.', '', $value);
-            $value = str_replace(',', '.', $value);
+            if (strrpos($value, ',') > strrpos($value, '.')) {
+                // 1.000.000,50
+                $value = str_replace('.', '', $value);
+                $value = str_replace(',', '.', $value);
+            } else {
+                // 1,000,000.50
+                $value = str_replace(',', '', $value);
+            }
         } elseif (strpos($value, ',') !== false) {
             // 1000,50 format
             $value = str_replace(',', '.', $value);

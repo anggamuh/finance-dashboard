@@ -27,10 +27,10 @@ class Index extends Component
     protected $paginationTheme = 'tailwind';
 
     protected $rules = [
-        'code' => 'required|string|max:20',
+        'code' => 'required|string|max:20|unique:accounts,code,NULL,id',
         'name' => 'required|string|max:255',
         'parent_id' => 'nullable|exists:accounts,id',
-        'type' => 'required|in:asset,liability,equity,revenue,expense',
+        'type' => 'required|in:asset,liability,equity,income,expense',
     ];
 
     public function updatingSearch()
@@ -67,7 +67,10 @@ class Index extends Component
 
     public function save()
     {
-        $this->validate();
+        $this->validate([
+            ...$this->rules,
+            'code' => 'required|string|max:20|unique:accounts,code,'.($this->editingId ?? 'NULL').',id',
+        ]);
 
         Account::updateOrCreate(
             [
@@ -128,6 +131,7 @@ class Index extends Component
     {
         return view('livewire.accounts.index', [
             'accounts' => Account::query()
+                ->with('parent:id,name')
                 ->when($this->search, function ($query) {
                     $query->where('code', 'like', '%'.$this->search.'%')
                         ->orWhere('name', 'like', '%'.$this->search.'%');

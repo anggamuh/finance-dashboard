@@ -13,7 +13,12 @@ class TestUpload extends Component
 
     public function save()
     {
-        dd($this->file);
+        $this->validate([
+            'file' => ['required', 'file', 'max:10240'],
+        ]);
+
+        session()->flash('success', 'File berhasil divalidasi.');
+        $this->reset('file');
     }
 
     public function render()
