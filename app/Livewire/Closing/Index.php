@@ -31,7 +31,7 @@ class Index extends Component
     public function getStockAwal()
     {
         return ClosingStock::where('year', $this->year - 1)
-            ->value('opening_stock') ?? 28285;
+            ->value('opening_stock') ?? 29336;
     }
 
     public function getRows()

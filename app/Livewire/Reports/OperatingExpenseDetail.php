@@ -29,6 +29,7 @@ class OperatingExpenseDetail extends Component
             '5320' => 'Beban Pemasaran',
             '5322' => 'Beban Umum & Administrasi',
             '5399' => 'Beban Usaha Lainnya',
+            '6999' => 'Beban Operasional lainnya',
         ];
 
         // Get parent totals (same way as working OperatingExpense)

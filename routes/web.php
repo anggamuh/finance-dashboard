@@ -10,6 +10,7 @@ use App\Livewire\Reports\OperatingExpense;
 use App\Livewire\Reports\OperatingExpenseDetail;
 use App\Livewire\Revenues\Index as RevenueIndex;
 use App\Livewire\TestUpload;
+use App\Http\Controllers\InternalOperationalCostInvoiceController;
 use App\Livewire\Transactions\Create as CreateTransaction;
 use App\Livewire\Transactions\Edit as EditTransaction;
 use App\Livewire\Transactions\Index as TransactionIndex;
@@ -59,6 +60,8 @@ Route::middleware([Authenticate::class])->group(function () {
     Route::get('/proofs/{path}', [\App\Http\Controllers\ProofFileController::class, 'show'])
     ->where('path', '.*')
     ->name('proofs.show');
+    Route::get('/internal-operational-costs/{cost}/invoice', [InternalOperationalCostInvoiceController::class, 'show'])
+    ->name('internal-operational-costs.invoice');
         
 
 });

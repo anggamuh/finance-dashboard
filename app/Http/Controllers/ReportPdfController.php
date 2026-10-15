@@ -23,6 +23,7 @@ class ReportPdfController extends Controller
             '5320' => 'Beban Pemasaran',
             '5322' => 'Beban Umum & Administrasi',
             '5399' => 'Beban Usaha Lainnya',
+            '6999' => 'Beban Operasional lainnya',
         ];
 
         $expenses = Transaction::query()
@@ -99,6 +100,8 @@ class ReportPdfController extends Controller
             '5320' => 'Beban Pemasaran',
             '5322' => 'Beban Umum & Administrasi',
             '5399' => 'Beban Usaha Lainnya',
+            '6999' => 'Beban Operasional lainnya',
+            
         ];
 
         // Build parent totals using DB-level grouping (match Livewire component)
