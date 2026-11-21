@@ -122,10 +122,28 @@
                     @endforelse
                 </div>
             </section>
+            <section class="fai-panel fai-panel-pad">
+                <h2 class="fai-panel-title">Riwayat percakapan</h2>
+                <p class="fai-panel-hint">Opsional · tersimpan terenkripsi · maksimal 25 chat</p>
+                @error('chat')<p class="fai-error">{{ $message }}</p>@enderror
+                <button type="button" class="fai-suite-primary" style="margin-top:12px" wire:click="saveChat">+ Simpan percakapan</button>
+                <div class="fai-account-list">
+                    @forelse($savedChats as $chat)
+                        <div class="fai-chat-history" wire:key="fai-chat-save-{{ $chat->id }}">
+                            <button type="button" wire:click="loadChat({{ $chat->id }})" title="{{ $chat->title }}">
+                                <strong>{{ $chat->title }}</strong><small>{{ $chat->month }} · {{ $chat->created_at->format('d/m/Y') }}</small>
+                            </button>
+                            <button type="button" class="fai-chat-remove" wire:click="deleteChat({{ $chat->id }})" wire:confirm="Hapus percakapan tersimpan?">×</button>
+                        </div>
+                    @empty
+                        <p class="fai-panel-hint" style="margin-top:12px">Belum ada chat yang disimpan.</p>
+                    @endforelse
+                </div>
+            </section>
             <section class="fai-panel fai-panel-pad fai-secure">
                 <h2 class="fai-panel-title"><span class="fai-secure-icon">♧</span> Privasi & keamanan</h2>
                 <p>Gemini menerima ringkasan data keuangan, bukan nomor rekening, referensi transfer, atau keterangan transaksi individual.</p>
-                <p>15 pertanyaan per jam per akun · Riwayat chat tidak disimpan di tabel database khusus.</p>
+                <p>15 pertanyaan per jam per akun · Chat hanya disimpan jika Anda memilih Simpan percakapan. Riwayat bisa dihapus.</p>
             </section>
         </aside>
     </div>
@@ -358,5 +376,12 @@
 @media(max-width:900px){.fai-overview,.fai-workspace{grid-template-columns:1fr}.fai-side{grid-template-columns:repeat(2,minmax(0,1fr))}.fai-secure{grid-column:1/-1}}
 @media(max-width:610px){.fai-top{align-items:flex-start;flex-direction:column}.fai-stats{grid-template-columns:1fr}.fai-overview{gap:12px}.fai-side{grid-template-columns:1fr}.fai-panel-pad{padding:17px}.fai-stat{padding:17px}.fai-chat-header{align-items:flex-start;flex-direction:column}.fai-dialog{padding:15px;min-height:300px}.fai-chat{min-height:520px}.fai-bubble{max-width:96%}.fai-chart{gap:7px}.fai-chart-amount{font-size:9px}.fai-footnote{flex-direction:column}}
 @media(prefers-reduced-motion:reduce){.fai *{scroll-behavior:auto!important;transition:none!important}}
+
+.fai-chat-history{display:flex;align-items:center;gap:6px;padding:8px;border-radius:9px;background:var(--fa-bg)}
+.fai-chat-history>button:first-child{flex:1;min-width:0;text-align:left;background:none;border:0;color:var(--fa-text)}
+.fai-chat-history strong{display:block;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fai-chat-history small{display:block;font-size:10px;color:var(--fa-muted)}
+.fai-chat-remove{border:1px solid var(--fa-line);border-radius:7px;background:var(--fa-card);padding:5px 9px;color:var(--fa-muted)}
+
 </style>
 </div>
