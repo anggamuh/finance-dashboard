@@ -44,7 +44,26 @@
         </div>
         <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
             <h2 class="font-semibold">Import transaksi</h2>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Format CSV/XLS/XLSX: <strong>tanggal, keterangan, masuk, keluar</strong>; opsional <strong>referensi</strong>. Tanggal DD/MM/YYYY. Satu nominal positif per baris. Maksimum 10.000 transaksi/file. Upload ulang mengganti data dari sumber tersebut, selama belum ada hasil yang disetujui.</p>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Upload CSV/XLS/XLSX langsung dari Excel. Pilih format sesuai kolom file, baris judul, dan sheet. Maksimum 10.000 transaksi/file. Upload ulang tidak diizinkan jika ada pasangan yang sudah disetujui.</p>
+            <div class="mt-4 grid gap-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-900/50 md:grid-cols-3">
+                <label class="text-sm">Format kolom
+                    <select wire:model="importMode" class="mt-1 w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-900">
+                        <option value="separated">Masuk + Keluar (dua kolom)</option>
+                        <option value="signed">Nominal positif / negatif</option>
+                        <option value="typed">Nominal + jenis transaksi</option>
+                    </select>
+                </label>
+                <label class="text-sm">Baris judul kolom
+                    <input type="number" wire:model="headerRow" min="1" max="30" class="mt-1 w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-900">
+                </label>
+                <label class="text-sm">Nama sheet (opsional)
+                    <input type="text" wire:model="sheetName" placeholder="Kosong = sheet aktif" class="mt-1 w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-900">
+                </label>
+                @error('importMode') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
+                @error('headerRow') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
+                @error('sheetName') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
+            </div>
+            <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">Header yang dikenali: Tanggal/Tgl/Date, Keterangan/Deskripsi/Uraian, Masuk/Penerimaan/Debit, Keluar/Pengeluaran/Kredit; atau Nominal/Amount dan Jenis/Type. Nomor bukti/referensi opsional. Cek bahwa Masuk dan Keluar sesuai arus uang pada file Anda.</p>
             <div class="mt-4 grid gap-5 md:grid-cols-2">
                 <form wire:submit="import('bank')" class="space-y-2">
                     <label class="block text-sm font-semibold" for="bankFile">Mutasi bank</label>
