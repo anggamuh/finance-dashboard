@@ -112,6 +112,12 @@
             <span>Buku Kas</span>
         </a>
 
+        <a href="{{ route('reconciliation.index') }}" @click="sidebarOpen = false"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-white {{ request()->routeIs('reconciliation.*') ? 'bg-emerald-500 text-white' : '' }}">
+            <x-heroicon-o-arrows-right-left class="w-6 h-6 text-emerald-600" />
+            <span>Rekonsiliasi Bank</span>
+        </a>
+
         <a href="{{ route('accounts') }}" @click="sidebarOpen = false"
             class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-white {{ request()->routeIs('accounts') ? 'bg-emerald-500 text-white' : '' }}">
             <x-heroicon-o-rectangle-stack class="w-6 h-6 text-emerald-600" />
