@@ -22,8 +22,7 @@ class FinanceAiStandaloneDesignTest extends TestCase
             ->assertSee('fai-account-list')
             ->assertSee('wire:submit="ask"', false)
             ->assertSee('wire:click="clearChat"', false)
-            ->assertSee('wire:click="previousAccountPage"', false)
-            ->assertSee('wire:click="nextAccountPage"', false);
+            ->assertSee('wire:click="quickQuestion', false);
     }
 
     public function test_finance_ai_standalone_css_has_no_new_asset_build_dependency(): void
