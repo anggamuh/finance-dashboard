@@ -80,7 +80,7 @@
             </div>
             <div class="mt-5 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">
                 <h3 class="font-semibold">Mutasi bank PDF (teks)</h3>
-                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Alternatif upload bank di atas. Dibaca langsung dengan PHP tanpa proc_open. Format awal yang didukung: tanggal, keterangan, nominal, dan penanda DB/CR pada satu baris. PDF scan atau tabel bank dengan format lain perlu penyesuaian. Hasil wajib diperiksa sebelum disimpan.</p>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Alternatif upload bank di atas. Dibaca langsung dengan PHP tanpa proc_open. Mendukung tabel mutasi rekening BCA (dua tanggal, uraian multi-baris, debit, kredit, saldo) dengan pengecekan total transaksi dan saldo. Untuk bank/format lain tetap perlu validasi; PDF scan tidak didukung. Hasil wajib diperiksa sebelum disimpan.</p>
                 <form wire:submit="previewBankPdf" class="mt-3 flex flex-wrap items-center gap-3">
                     <input type="file" wire:model="bankPdf" accept=".pdf,application/pdf" class="text-sm">
                     <button type="submit" wire:loading.attr="disabled" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Preview PDF</button>
@@ -96,7 +96,7 @@
                 @endif
                 @if($pdfPreview)
                     <div class="mt-4 overflow-x-auto">
-                        <p class="mb-2 text-sm font-semibold">Preview {{ count($pdfPreview) }} transaksi — cek arah masuk/keluar dan nominalnya.</p>
+                        <p class="mb-2 text-sm font-semibold">Preview {{ count($pdfPreview) }} transaksi — cek arah masuk/keluar dan nominalnya. Parser BCA memverifikasi jumlah transaksi, total debit/kredit, dan saldo akhir sebelum mengizinkan impor.</p>
                         <table class="w-full min-w-[600px] text-left text-xs">
                             <thead><tr><th class="p-2">Tanggal</th><th class="p-2">Keterangan</th><th class="p-2">Arah</th><th class="p-2 text-right">Nominal</th></tr></thead>
                             <tbody>
@@ -111,6 +111,11 @@
                             </tbody>
                         </table>
                         @if(count($pdfPreview)>20) <p class="mt-1 text-xs text-slate-500">Menampilkan 20 transaksi pertama.</p> @endif
+                        <div class="mt-3 flex flex-wrap gap-4 text-sm font-semibold">
+                            <span class="text-emerald-700 dark:text-emerald-400">Total masuk: Rp {{ number_format(collect($pdfPreview)->where('direction','in')->sum('amount'),2,',','.') }}</span>
+                            <span class="text-rose-700 dark:text-rose-400">Total keluar: Rp {{ number_format(collect($pdfPreview)->where('direction','out')->sum('amount'),2,',','.') }}</span>
+                        </div>
+
                     </div>
                     <button type="button" wire:click="confirmBankPdf" wire:confirm="Sudah memeriksa transaksi dan nominal PDF? Simpan ke periode ini?" class="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Konfirmasi & Simpan PDF</button>
                 @endif
