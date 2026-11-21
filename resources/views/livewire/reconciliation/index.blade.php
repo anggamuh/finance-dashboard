@@ -80,7 +80,7 @@
             </div>
             <div class="mt-5 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">
                 <h3 class="font-semibold">Mutasi bank PDF (teks)</h3>
-                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Alternatif upload bank di atas. Format awal yang didukung: tanggal, keterangan, nominal, dan penanda DB/CR pada satu baris. PDF scan atau tabel bank dengan format lain perlu penyesuaian. Hasil wajib diperiksa sebelum disimpan.</p>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Alternatif upload bank di atas. Dibaca langsung dengan PHP tanpa proc_open. Format awal yang didukung: tanggal, keterangan, nominal, dan penanda DB/CR pada satu baris. PDF scan atau tabel bank dengan format lain perlu penyesuaian. Hasil wajib diperiksa sebelum disimpan.</p>
                 <form wire:submit="previewBankPdf" class="mt-3 flex flex-wrap items-center gap-3">
                     <input type="file" wire:model="bankPdf" accept=".pdf,application/pdf" class="text-sm">
                     <button type="submit" wire:loading.attr="disabled" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Preview PDF</button>
