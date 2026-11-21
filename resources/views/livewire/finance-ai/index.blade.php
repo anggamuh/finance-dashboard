@@ -1,176 +1,262 @@
-<div class="mx-auto max-w-7xl space-y-6 text-slate-800 dark:text-slate-100">
-    <header class="flex flex-wrap items-center justify-between gap-4">
+
+<div class="fai">
+    <header class="fai-top">
         <div>
-            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">
-                <x-heroicon-o-sparkles class="h-4 w-4"/> Finance Intelligence
-            </div>
-            <h1 class="mt-2 text-3xl font-bold tracking-tight">Finance AI Assistant</h1>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Tanya data keuangan yang sudah dihitung Laravel. AI hanya membaca ringkasan, tidak mengubah transaksi.</p>
+            <div class="fai-kicker"><span class="fai-mark">✦</span> SECOND STAR · FINANCE INTELLIGENCE</div>
+            <h1>Finance AI <span style="color:var(--fa-accent)">Workspace</span></h1>
+            <p class="fai-intro">Tanya, analisis, dan telusuri laporan keuangan di satu tempat. Data dihitung langsung dari pembukuan.</p>
         </div>
-        <button type="button" wire:click="clearChat" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">Percakapan baru</button>
+        <button type="button" class="fai-button" wire:click="clearChat">↻ &nbsp; Percakapan baru</button>
     </header>
 
-    <div class="grid gap-4 sm:grid-cols-3">
-        @foreach([['label'=>'Beban operasional','value'=>$dashboard['total']],['label'=>'Bulan sebelumnya','value'=>$dashboard['previous_total']],['label'=>'Selisih beban','value'=>$dashboard['delta']]] as $metric)
-            <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
-                <p class="text-sm text-slate-500">{{ $metric['label'] }}</p>
-                <p class="mt-2 text-2xl font-bold">Rp {{ number_format($metric['value'],0,',','.') }}</p>
-            </div>
-        @endforeach
-    </div>
+    <section class="fai-stats" aria-label="Ringkasan keuangan">
+        <div class="fai-stat is-accent">
+            <span class="fai-label">Beban operasional</span>
+            <div class="fai-stat-value">Rp {{ number_format($dashboard['total'],0,',','.') }}</div>
+            <div class="fai-stat-desc">Periode {{ $dashboard['month'] }}</div>
+        </div>
+        <div class="fai-stat">
+            <span class="fai-label">Bulan sebelumnya</span>
+            <div class="fai-stat-value">Rp {{ number_format($dashboard['previous_total'],0,',','.') }}</div>
+            <div class="fai-stat-desc">Pembanding beban operasional</div>
+        </div>
+        <div class="fai-stat">
+            <span class="fai-label">Selisih antarbulan</span>
+            <div class="fai-stat-value" style="color:{{ $dashboard['delta'] > 0 ? '#d75e67' : 'var(--fa-accent)' }}">{{ $dashboard['delta'] > 0 ? '+' : ($dashboard['delta'] < 0 ? '−' : '') }}Rp {{ number_format(abs($dashboard['delta']),0,',','.') }}</div>
+            <div class="fai-stat-desc">{{ $dashboard['delta'] > 0 ? 'Beban meningkat' : ($dashboard['delta'] < 0 ? 'Beban menurun' : 'Tidak ada perubahan') }}</div>
+        </div>
+    </section>
 
-    <div class="grid gap-5 lg:grid-cols-2">
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
-            <h2 class="font-semibold">Tren beban operasional (6 bulan)</h2>
-            <p class="text-xs text-slate-500">Dihitung langsung dari transaksi Accurate</p>
+    <div class="fai-overview">
+        <section class="fai-panel fai-panel-pad">
+            <h2 class="fai-panel-title">Tren pengeluaran</h2>
+            <p class="fai-panel-hint">Enam bulan terakhir · angka aktual Accurate</p>
             @php($chartMax = max(1, collect($dashboard['chart'])->max('total')))
-            <div class="mt-5 flex h-44 items-end gap-3">
+            <div class="fai-chart" role="img" aria-label="Grafik beban operasional enam bulan terakhir">
                 @foreach($dashboard['chart'] as $point)
-                    <div class="flex min-w-0 flex-1 flex-col items-center gap-2">
-                        <span class="text-center text-[10px] text-slate-500">{{ number_format($point['total']/1000000,1,',','.') }} jt</span>
-                        <div class="flex h-28 w-full items-end overflow-hidden rounded bg-slate-100 dark:bg-slate-800" title="{{ $point['month'] }}: Rp {{ number_format($point['total'],0,',','.') }}">
-                            <div class="w-full rounded-t bg-emerald-500" style="height: {{ max(0,min(100,($point['total']/$chartMax)*100)) }}%"></div>
-                        </div>
-                        <span class="truncate text-[10px] text-slate-500">{{ $point['label'] }}</span>
+                    <div class="fai-chart-col" title="{{ $point['month'] }}: Rp {{ number_format($point['total'],0,',','.') }}">
+                        <span class="fai-chart-amount">{{ number_format($point['total']/1000000,1,',','.') }} jt</span>
+                        <div class="fai-chart-track"><div class="fai-chart-bar" style="height:{{ max(0,min(100,$point['total']/$chartMax*100)) }}%"></div></div>
+                        <span class="fai-chart-month">{{ $point['label'] }}</span>
                     </div>
                 @endforeach
             </div>
         </section>
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
-            <h2 class="font-semibold">Financial Insights</h2>
-            <p class="text-xs text-slate-500">Ringkasan deterministik, tanpa biaya API tambahan</p>
-            @foreach($dashboard['insights'] as $insight)
-                <div class="mt-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
-                    <p class="text-sm font-semibold">{{ $insight['title'] }}</p>
-                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ $insight['detail'] }}</p>
-                </div>
-            @endforeach
+        <section class="fai-panel fai-panel-pad">
+            <h2 class="fai-panel-title">Insight keuangan</h2>
+            <p class="fai-panel-hint">Pemeriksaan otomatis dari database, tanpa request Gemini tambahan</p>
+            <div class="fai-insights">
+                @foreach($dashboard['insights'] as $insight)
+                    <div class="fai-insight"><span class="fai-insight-dot"></span><div>
+                        <p class="fai-insight-title">{{ $insight['title'] }}</p>
+                        <p class="fai-insight-desc">{{ $insight['detail'] }}</p>
+                    </div></div>
+                @endforeach
+            </div>
         </section>
     </div>
-    <div class="grid gap-5 lg:grid-cols-[1fr_280px]">
-        <section class="flex min-h-[620px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-                <div class="flex items-center gap-2">
-                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"><x-heroicon-o-sparkles class="h-5 w-5"/></span>
+
+    <div class="fai-workspace">
+        <section class="fai-panel fai-chat" aria-label="Percakapan Finance AI">
+            <div class="fai-chat-header">
+                <div class="fai-chat-brand">
+                    <div class="fai-logo">✦</div>
                     <div>
-                        <p class="text-sm font-bold">Finance Copilot <span class="ml-1 text-xs font-normal text-slate-400">Gemini</span></p>
-                        <p class="text-xs text-slate-500">Read-only · ringkasan agregat · tanpa data rekening</p>
+                        <p class="fai-name">Finance Copilot <span style="color:var(--fa-muted);font-size:11px;font-weight:500">· Gemini</span></p>
+                        <p class="fai-subname"><span class="fai-online"></span>Read-only · Data agregat · Tidak mengubah transaksi</p>
                     </div>
                 </div>
-                <label class="flex items-center gap-2 text-sm text-slate-500">
-                    Periode
-                    <input type="month" wire:model="month" class="rounded-lg border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"/>
-                </label>
+                <label class="fai-month-label">Periode <input class="fai-month" aria-label="Pilih periode" type="month" wire:model.live="month"></label>
             </div>
-
-            <div class="flex-1 space-y-5 px-5 py-7 sm:px-7">
+            <div class="fai-dialog" aria-live="polite">
                 @if(count($messages) === 0)
-                    <div class="mx-auto flex max-w-md flex-col items-center py-14 text-center">
-                        <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950"><x-heroicon-o-sparkles class="h-8 w-8"/></div>
-                        <h2 class="mt-5 text-xl font-bold">Ada yang mau dicek hari ini?</h2>
-                        <p class="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">Tanya soal beban operasional, omzet, atau status rekonsiliasi bank. Angka diambil dari database dashboard yang tersedia.</p>
+                    <div class="fai-empty">
+                        <div class="fai-empty-icon">✦</div>
+                        <h2>Halo, mau analisis apa hari ini?</h2>
+                        <p>Tanyakan beban, omzet, tren pengeluaran, atau progres rekonsiliasi bank. Pilih pertanyaan cepat atau tulis pertanyaan sendiri.</p>
                     </div>
                 @endif
-
                 @foreach($messages as $i => $message)
-                    <div wire:key="finance-ai-message-{{ $i }}" class="flex {{ $message['role'] === 'user' ? 'justify-end' : 'justify-start' }}">
-                        <div class="max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[78%] {{ $message['role'] === 'user' ? 'bg-emerald-600 text-white' : 'border border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100' }}">
-                            <p class="mb-2 text-[11px] font-semibold uppercase tracking-wide opacity-70">{{ $message['role'] === 'user' ? 'Kamu' : 'Finance AI' }} · {{ $message['month'] }}</p>
+                    <div class="fai-message {{ $message['role'] === 'user' ? 'is-user' : 'is-ai' }}" wire:key="fai-message-{{ $i }}">
+                        <div class="fai-bubble">
+                            <p class="fai-message-role">{{ $message['role'] === 'user' ? 'Kamu' : 'Finance AI' }} · {{ $message['month'] }}</p>
                             @if($message['role'] === 'assistant')
-                                <div class="finance-ai-markdown break-words">{!! \Illuminate\Support\Str::markdown($message['text'], ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}</div>
+                                <div class="fai-markdown">{!! \Illuminate\Support\Str::markdown($message['text'], ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}</div>
                             @else
-                                <div class="whitespace-pre-wrap break-words">{{ $message['text'] }}</div>
+                                <div class="fai-plain">{{ $message['text'] }}</div>
                             @endif
                         </div>
                     </div>
                 @endforeach
             </div>
-
-            <div class="border-t border-slate-100 p-4 sm:p-5 dark:border-slate-800">
-                @error('question')<p class="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{{ $message }}</p>@enderror
-                @error('month')<p class="mb-3 text-sm text-red-600">{{ $message }}</p>@enderror
-                <form wire:submit="ask" class="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-800">
-                    <textarea wire:model="question" rows="2" maxlength="500" placeholder="Contoh: Kenapa pengeluaran Oktober naik dibanding September?" class="min-h-[58px] flex-1 resize-none border-0 bg-transparent text-sm text-slate-800 focus:ring-0 dark:text-slate-100" required></textarea>
-                    <button type="submit" wire:loading.attr="disabled" wire:target="ask" class="mb-1 rounded-xl bg-emerald-600 p-3 text-white hover:bg-emerald-700 disabled:opacity-50" aria-label="Kirim pertanyaan">
-                        <x-heroicon-o-paper-airplane class="h-5 w-5"/>
-                    </button>
+            <div class="fai-input-area">
+                @error('question') <p class="fai-error">{{ $message }}</p> @enderror
+                @error('month') <p class="fai-error">{{ $message }}</p> @enderror
+                <form class="fai-composer" wire:submit="ask">
+                    <textarea wire:model="question" rows="2" maxlength="500" required aria-label="Tanyakan tentang keuangan" placeholder="Tanyakan sesuatu tentang laporan keuangan..."></textarea>
+                    <button type="submit" class="fai-send" wire:loading.attr="disabled" wire:target="ask" aria-label="Kirim pertanyaan"><x-heroicon-o-paper-airplane /></button>
                 </form>
-                <div class="mt-2 flex justify-between gap-2 text-xs text-slate-400">
-                    <span>AI dapat keliru. Verifikasi angka sebelum dipakai untuk laporan.</span>
-                    <span wire:loading wire:target="ask">Sedang menganalisis...</span>
-                </div>
+                <div class="fai-footnote"><span>AI bisa salah. Periksa kembali angka sebelum dipakai untuk laporan.</span><span wire:loading wire:target="ask">Sedang menganalisis...</span></div>
             </div>
         </section>
-
-        <aside class="space-y-4">
-            <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
-                <h2 class="font-bold">Pertanyaan cepat</h2>
-                <p class="mt-1 text-xs text-slate-500">Klik untuk mengisi kolom chat.</p>
-                <div class="mt-4 space-y-2">
-                    @foreach(['expense'=>'Beban bulan ini vs sebelumnya','accounts'=>'Akun beban terbesar','reconciliation'=>'Status rekonsiliasi bank','revenue'=>'Total omzet periode ini','why'=>'Apa penyebab perubahan biaya?'] as $type => $label)
-                        <button type="button" wire:click="quickQuestion('{{ $type }}')" class="w-full rounded-xl border border-slate-200 px-3 py-3 text-left text-sm transition hover:border-emerald-400 hover:bg-emerald-50 dark:border-slate-700 dark:hover:bg-slate-800">{{ $label }}</button>
+        <aside class="fai-side">
+            <section class="fai-panel fai-panel-pad">
+                <h2 class="fai-panel-title">Pertanyaan cepat</h2>
+                <p class="fai-panel-hint">Pilih untuk mengisi kolom chat</p>
+                <div class="fai-quick">
+                    @foreach(['expense'=>'Beban bulan ini vs sebelumnya','accounts'=>'Tiga akun beban terbesar','reconciliation'=>'Status rekonsiliasi bank','revenue'=>'Total omzet periode ini','why'=>'Apa penyebab perubahan biaya?'] as $type => $label)
+                        <button type="button" class="fai-quick-btn" wire:click="quickQuestion('{{ $type }}')"><span>{{ $label }}</span><span class="fai-arrow">↗</span></button>
                     @endforeach
                 </div>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
-                <h2 class="font-semibold">Akun beban terbesar</h2>
-                <p class="mt-1 text-xs text-slate-500">Klik untuk lihat transaksi.</p>
-                @forelse($dashboard['accounts'] as $row)
-                    <button type="button" wire:click="showAccount(@js($row['code']))" class="mt-2 block w-full rounded-lg p-2 text-left hover:bg-emerald-50 dark:hover:bg-slate-800">
-                        <span class="block truncate text-xs font-semibold">{{ $row['name'] }}</span>
-                        <span class="text-xs text-slate-500">Rp {{ number_format($row['amount'],0,',','.') }} · {{ $row['count'] }} transaksi</span>
-                    </button>
-                @empty
-                    <p class="mt-3 text-xs text-slate-500">Belum ada akun beban.</p>
-                @endforelse
-            </div>
-            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100">
-                <div class="flex items-center gap-2 font-bold"><x-heroicon-o-shield-check class="h-5 w-5"/> Privasi & keamanan</div>
-                <p class="mt-2 leading-relaxed">Hanya data agregat keuangan dan ringkasan status rekonsiliasi yang dikirim ke Gemini. Nomor rekening, referensi transfer, dan rincian transaksi tidak dikirim.</p>
-                <p class="mt-3 text-xs opacity-80">Maksimal 15 pertanyaan per jam per akun. Riwayat hanya ada selama sesi halaman, tidak disimpan dalam database khusus.</p>
-            </div>
+            </section>
+            <section class="fai-panel fai-panel-pad">
+                <h2 class="fai-panel-title">Akun beban terbesar</h2>
+                <p class="fai-panel-hint">Klik untuk lihat rincian transaksi</p>
+                <div class="fai-account-list">
+                    @forelse($dashboard['accounts'] as $row)
+                        <button class="fai-account" type="button" wire:click="showAccount(@js($row['code']))">
+                            <span><span class="fai-account-name">{{ $row['name'] }}</span><span class="fai-account-meta">Rp {{ number_format($row['amount'],0,',','.') }} · {{ $row['count'] }} transaksi</span></span><span class="fai-account-chevron">›</span>
+                        </button>
+                    @empty
+                        <p class="fai-panel-hint" style="margin-top:14px">Belum ada akun beban untuk periode ini.</p>
+                    @endforelse
+                </div>
+            </section>
+            <section class="fai-panel fai-panel-pad fai-secure">
+                <h2 class="fai-panel-title"><span class="fai-secure-icon">♧</span> Privasi & keamanan</h2>
+                <p>Gemini menerima ringkasan data keuangan, bukan nomor rekening, referensi transfer, atau keterangan transaksi individual.</p>
+                <p>15 pertanyaan per jam per akun · Riwayat chat tidak disimpan di tabel database khusus.</p>
+            </section>
         </aside>
     </div>
+
     @if($accountTransactions)
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
-            <div class="mb-4 flex items-center justify-between gap-2">
-                <div>
-                    <h2 class="font-semibold">Rincian: {{ $accountName }}</h2>
-                    <p class="text-xs text-slate-500">Periode {{ $month }} · Hanya ditampilkan di dashboard, tidak dikirim ke Gemini.</p>
-                </div>
-                <button type="button" wire:click="closeAccount" class="rounded-lg border border-slate-200 px-3 py-2 text-xs dark:border-slate-700">Tutup</button>
+        <section class="fai-panel fai-detail" aria-label="Rincian transaksi akun">
+            <div class="fai-detail-head">
+                <div><h2 class="fai-panel-title">Rincian akun · {{ $accountName }}</h2><p class="fai-panel-hint">Periode {{ $month }} · Detail hanya muncul di dashboard, tidak dikirim ke Gemini.</p></div>
+                <button class="fai-button" type="button" wire:click="closeAccount">Tutup</button>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[600px] text-left text-sm">
-                    <thead class="bg-slate-50 dark:bg-slate-800"><tr><th class="p-3">Tanggal</th><th class="p-3">Keterangan</th><th class="p-3 text-right">Nominal</th></tr></thead>
-                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            <div class="fai-table-wrap">
+                <table class="fai-table">
+                    <thead><tr><th>Tanggal</th><th>Keterangan</th><th class="num">Nominal beban</th></tr></thead>
+                    <tbody>
                         @foreach($accountTransactions as $transaction)
-                            <tr wire:key="finance-drill-{{ $transaction->id }}">
-                                <td class="whitespace-nowrap p-3">{{ $transaction->transaction_date->format('d/m/Y') }}</td>
-                                <td class="p-3">{{ $transaction->description ?: '—' }}</td>
-                                <td class="whitespace-nowrap p-3 text-right">Rp {{ number_format((float)$transaction->debit,0,',','.') }}</td>
+                            <tr wire:key="fai-transaction-{{ $transaction->id }}">
+                                <td>{{ $transaction->transaction_date->format('d/m/Y') }}</td>
+                                <td>{{ $transaction->description ?: '—' }}</td>
+                                <td class="num">Rp {{ number_format((float)$transaction->debit,0,',','.') }}</td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
-            <div class="mt-4 flex items-center justify-between gap-3">
-                <button type="button" wire:click="previousAccountPage" @disabled($accountPage <= 1) class="rounded-lg border border-slate-200 px-3 py-2 text-xs disabled:opacity-40 dark:border-slate-700">Sebelumnya</button>
-                <span class="text-xs text-slate-500">Halaman {{ $accountPage }} dari {{ max(1,$accountTransactions->lastPage()) }} · {{ $accountTransactions->total() }} transaksi</span>
-                <button type="button" wire:click="nextAccountPage" @disabled(!$accountTransactions->hasMorePages()) class="rounded-lg border border-slate-200 px-3 py-2 text-xs disabled:opacity-40 dark:border-slate-700">Selanjutnya</button>
+            <div class="fai-pagination">
+                <button type="button" class="fai-button" wire:click="previousAccountPage" @disabled($accountPage <= 1)>‹ Sebelumnya</button>
+                <span>Halaman {{ $accountPage }} / {{ max(1,$accountTransactions->lastPage()) }} · {{ $accountTransactions->total() }} transaksi</span>
+                <button type="button" class="fai-button" wire:click="nextAccountPage" @disabled(!$accountTransactions->hasMorePages())>Selanjutnya ›</button>
             </div>
         </section>
     @endif
-    <style>
-        .finance-ai-markdown p {margin:.5rem 0}
-        .finance-ai-markdown strong {font-weight:700}
-        .finance-ai-markdown ul {list-style:disc;padding-left:1.3rem;margin:.5rem 0}
-        .finance-ai-markdown ol {list-style:decimal;padding-left:1.3rem;margin:.5rem 0}
-        .finance-ai-markdown li {margin:.25rem 0}
-        .finance-ai-markdown table {display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;margin:.6rem 0}
-        .finance-ai-markdown th,.finance-ai-markdown td {border:1px solid #94a3b855;padding:.4rem .55rem;text-align:left}
-        .finance-ai-markdown th {font-weight:700}
-        .finance-ai-markdown code {white-space:break-spaces;background:#94a3b822;border-radius:4px;padding:1px 3px}
-        .finance-ai-markdown a {color:#059669;text-decoration:underline}
-    </style>
+    
+<style>
+/* Standalone styles: no Tailwind build, external CSS or JS dependencies. */
+.fai{--fa-bg:#f3f7fa;--fa-card:#fff;--fa-text:#16253a;--fa-muted:#708198;--fa-line:#e4ebf1;--fa-accent:#059b78;--fa-soft:#e5f8f1;--fa-shadow:0 14px 42px rgba(23,50,75,.055);color:var(--fa-text);max-width:1500px;margin:0 auto;font-family:inherit}
+.dark .fai{--fa-bg:#101922;--fa-card:#15222e;--fa-text:#eef5f8;--fa-muted:#99aabc;--fa-line:#304250;--fa-soft:#153f37;--fa-shadow:0 14px 42px rgba(0,0,0,.15)}
+.fai *{box-sizing:border-box}.fai button,.fai textarea,.fai input{font:inherit}.fai button{cursor:pointer}.fai button:disabled{opacity:.5;cursor:not-allowed}
+.fai button:focus-visible,.fai input:focus-visible,.fai textarea:focus-visible{outline:3px solid #42d7b4;outline-offset:2px}
+.fai-top{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:24px}
+.fai-kicker{display:flex;align-items:center;gap:9px;font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--fa-accent)}
+.fai-mark{width:27px;height:27px;display:grid;place-items:center;border-radius:9px;background:var(--fa-soft);font-size:15px}
+.fai h1{font-weight:800;letter-spacing:-.035em;font-size:clamp(26px,3vw,35px);margin:8px 0 5px;line-height:1.15}
+.fai-intro{color:var(--fa-muted);font-size:13px;line-height:1.6;margin:0}
+.fai-button{border:1px solid var(--fa-line);background:var(--fa-card);color:var(--fa-text);border-radius:12px;padding:11px 15px;font-size:12px;font-weight:750;box-shadow:var(--fa-shadow);white-space:nowrap}
+.fai-button:hover{border-color:#10b88d}
+.fai-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin-bottom:17px}
+.fai-panel,.fai-stat{background:var(--fa-card);border:1px solid var(--fa-line);border-radius:19px;box-shadow:var(--fa-shadow)}
+.fai-stat{padding:21px 22px;position:relative;overflow:hidden}
+.fai-stat:before{content:"";position:absolute;width:82px;height:82px;border-radius:50%;background:var(--fa-soft);right:-33px;top:-42px}
+.fai-stat .fai-label{font-size:12px;color:var(--fa-muted);font-weight:600}
+.fai-stat-value{font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.025em;font-size:clamp(18px,2vw,27px);line-height:1.25;margin:9px 0 6px;overflow-wrap:anywhere}
+.fai-stat-desc{font-size:11px;color:var(--fa-muted)}
+.fai-stat.is-accent .fai-stat-value{color:var(--fa-accent)}
+.fai-overview{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:17px;margin-bottom:17px}
+.fai-panel-pad{padding:23px}
+.fai-panel-title{font-size:15px;font-weight:800;letter-spacing:-.01em;margin:0 0 4px}
+.fai-panel-hint{font-size:11px;color:var(--fa-muted);line-height:1.5;margin:0}
+.fai-chart{height:180px;display:flex;align-items:stretch;gap:13px;margin-top:18px;padding:0 4px}
+.fai-chart-col{flex:1;min-width:0;display:flex;align-items:center;flex-direction:column;justify-content:flex-end;gap:7px}
+.fai-chart-amount{font-size:10px;font-weight:650;color:var(--fa-muted);white-space:nowrap}
+.fai-chart-track{height:120px;width:100%;background:var(--fa-bg);border:1px solid var(--fa-line);border-radius:8px 8px 4px 4px;display:flex;align-items:flex-end;overflow:hidden;max-width:100px}
+.fai-chart-bar{width:100%;min-height:2px;background:linear-gradient(180deg,#37c9a5,#059b78);border-radius:7px 7px 0 0}
+.fai-chart-col:last-child .fai-chart-bar{background:linear-gradient(180deg,#14dab0,#047e63)}
+.fai-chart-month{font-size:10px;color:var(--fa-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.fai-insights{display:grid;gap:10px;margin-top:15px}
+.fai-insight{padding:12px 14px;border:1px solid var(--fa-line);border-radius:12px;background:var(--fa-bg);display:flex;gap:11px}
+.fai-insight-dot{width:8px;height:8px;flex:0 0 8px;margin-top:5px;border-radius:50%;background:#14b890;box-shadow:0 0 0 4px var(--fa-soft)}
+.fai-insight-title{font-size:12px;font-weight:800;margin:0 0 4px}
+.fai-insight-desc{font-size:11px;color:var(--fa-muted);line-height:1.55;margin:0}
+.fai-workspace{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:17px;align-items:start}
+.fai-chat{min-height:610px;display:flex;flex-direction:column;overflow:hidden}
+.fai-chat-header{padding:17px 20px;border-bottom:1px solid var(--fa-line);display:flex;align-items:center;justify-content:space-between;gap:15px}
+.fai-chat-brand{display:flex;align-items:center;gap:11px;min-width:0}
+.fai-logo{width:39px;height:39px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(145deg,#16bf97,#036b59);color:white;font-size:22px;flex:0 0 auto}
+.fai-name{font-size:14px;font-weight:800;margin:0}
+.fai-subname{font-size:10px;margin:4px 0 0;color:var(--fa-muted)}
+.fai-online{display:inline-block;width:7px;height:7px;border-radius:50%;background:#14bb88;margin-right:5px}
+.fai-month-label{display:flex;align-items:center;gap:8px;color:var(--fa-muted);font-size:11px;white-space:nowrap}
+.fai-month{border:1px solid var(--fa-line);background:var(--fa-card);color:var(--fa-text);padding:8px 10px;border-radius:10px;max-width:175px;font-size:12px}
+.fai-dialog{flex:1;min-height:365px;padding:23px;display:flex;flex-direction:column;gap:19px}
+.fai-empty{margin:auto;text-align:center;max-width:340px;padding:20px 0}
+.fai-empty-icon{width:64px;height:64px;display:grid;place-items:center;margin:0 auto 18px;border-radius:19px;background:var(--fa-soft);color:var(--fa-accent);font-size:29px}
+.fai-empty h2{font-size:19px;letter-spacing:-.02em;margin:0 0 9px;font-weight:800}
+.fai-empty p{font-size:12px;line-height:1.8;color:var(--fa-muted);margin:0}
+.fai-message{display:flex}.fai-message.is-user{justify-content:flex-end}.fai-message.is-ai{justify-content:flex-start}
+.fai-bubble{max-width:85%;min-width:0;padding:13px 17px;border-radius:16px;font-size:12px;line-height:1.85;overflow-wrap:anywhere}
+.fai-message.is-user .fai-bubble{background:linear-gradient(140deg,#0da07d,#03735c);color:#fff;border-bottom-right-radius:5px}
+.fai-message.is-ai .fai-bubble{border:1px solid var(--fa-line);background:var(--fa-bg);border-bottom-left-radius:5px;color:var(--fa-text)}
+.fai-message-role{font-size:10px;text-transform:uppercase;letter-spacing:.09em;font-weight:850;opacity:.65;margin:0 0 7px}
+.fai-plain{white-space:pre-wrap}
+.fai-input-area{border-top:1px solid var(--fa-line);padding:16px 19px 18px}
+.fai-error{background:#fff0f0;color:#b42328;border:1px solid #ffc6c6;padding:10px 12px;border-radius:10px;font-size:12px;margin:0 0 10px}
+.dark .fai-error{background:#4b2525;color:#ffcdcd;border-color:#754242}
+.fai-composer{display:flex;align-items:flex-end;gap:10px;background:var(--fa-bg);border:1px solid var(--fa-line);border-radius:15px;padding:8px}
+.fai-composer:focus-within{border-color:#25ba93;box-shadow:0 0 0 3px rgba(17,178,133,.1)}
+.fai-composer textarea{flex:1;min-width:0;min-height:55px;padding:10px 7px;resize:vertical;border:0;outline:0!important;box-shadow:none!important;background:transparent;color:var(--fa-text);font-size:12px;line-height:1.5}
+.fai-composer textarea::placeholder{color:var(--fa-muted)}
+.fai-send{width:39px;height:39px;flex:0 0 39px;display:grid;place-items:center;background:var(--fa-accent);color:#fff;border:0;border-radius:11px;margin-bottom:2px}
+.fai-send:hover{background:#008568}.fai-send svg{height:18px;width:18px}
+.fai-footnote{margin-top:9px;color:var(--fa-muted);font-size:10px;display:flex;justify-content:space-between;gap:8px}
+.fai-side{display:grid;gap:16px}
+.fai-quick{display:grid;gap:7px;margin-top:15px}
+.fai-quick-btn{width:100%;border:1px solid var(--fa-line);background:var(--fa-bg);border-radius:11px;padding:12px 12px;text-align:left;color:var(--fa-text);font-size:11px;font-weight:650;display:flex;justify-content:space-between;gap:8px;align-items:center;line-height:1.45}
+.fai-quick-btn:hover{border-color:#26b995;background:var(--fa-soft)}
+.fai-arrow{color:var(--fa-accent);font-weight:900}
+.fai-account-list{display:grid;gap:4px;margin-top:11px}
+.fai-account{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;border:0;border-radius:10px;background:transparent;text-align:left;padding:10px 8px;color:var(--fa-text)}
+.fai-account:hover{background:var(--fa-soft)}
+.fai-account-name{font-size:11px;font-weight:700;line-height:1.4;display:block}
+.fai-account-meta{font-size:10px;color:var(--fa-muted);margin-top:4px;display:block}
+.fai-account-chevron{font-size:20px;color:var(--fa-accent)}
+.fai-secure{background:var(--fa-soft);border-color:transparent}
+.fai-secure-icon{font-size:17px;margin-right:5px}.fai-secure p{font-size:11px;color:var(--fa-muted);line-height:1.7;margin:10px 0 0}
+.fai-detail{margin-top:17px;padding:22px}
+.fai-detail-head{display:flex;justify-content:space-between;align-items:center;gap:15px}
+.fai-table-wrap{overflow-x:auto;margin-top:15px}
+.fai-table{border-collapse:collapse;width:100%;font-size:12px;min-width:580px}
+.fai-table th{text-align:left;color:var(--fa-muted);background:var(--fa-bg);font-size:11px}
+.fai-table th,.fai-table td{padding:12px;border-bottom:1px solid var(--fa-line)}
+.fai-table .num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.fai-pagination{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px;color:var(--fa-muted);font-size:11px}
+.fai-markdown p{margin:0 0 9px}.fai-markdown p:last-child{margin-bottom:0}
+.fai-markdown ul{list-style:disc;padding-left:22px;margin:8px 0}.fai-markdown ol{list-style:decimal;padding-left:22px;margin:8px 0}
+.fai-markdown li{margin:3px 0}.fai-markdown strong{font-weight:850}
+.fai-markdown table{display:block;overflow-x:auto;border-collapse:collapse;margin:10px 0;max-width:100%}
+.fai-markdown th,.fai-markdown td{border:1px solid var(--fa-line);padding:7px 9px;text-align:left}
+.fai-markdown th{font-weight:800}.fai-markdown code{background:var(--fa-soft);padding:1px 4px;border-radius:4px;white-space:break-spaces}
+.fai-markdown a{color:var(--fa-accent);text-decoration:underline}
+@media(max-width:1120px){.fai-workspace{grid-template-columns:minmax(0,1fr) 260px}}
+@media(max-width:900px){.fai-overview,.fai-workspace{grid-template-columns:1fr}.fai-side{grid-template-columns:repeat(2,minmax(0,1fr))}.fai-secure{grid-column:1/-1}}
+@media(max-width:610px){.fai-top{align-items:flex-start;flex-direction:column}.fai-stats{grid-template-columns:1fr}.fai-overview{gap:12px}.fai-side{grid-template-columns:1fr}.fai-panel-pad{padding:17px}.fai-stat{padding:17px}.fai-chat-header{align-items:flex-start;flex-direction:column}.fai-dialog{padding:15px;min-height:300px}.fai-chat{min-height:520px}.fai-bubble{max-width:96%}.fai-chart{gap:7px}.fai-chart-amount{font-size:9px}.fai-footnote{flex-direction:column}}
+@media(prefers-reduced-motion:reduce){.fai *{scroll-behavior:auto!important;transition:none!important}}
+</style>
 </div>
