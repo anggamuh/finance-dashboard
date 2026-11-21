@@ -131,6 +131,22 @@ class BankStatementPdfParser
                 continue;
             }
             $description = substr($body, 0, $parts[0][1]);
+            // Layout-preserving extractors put extra description lines AFTER the
+            // monetary columns; token-based extractors put them before the columns.
+            $afterBalance = substr($body, $parts[0][1] + strlen($parts[0][0]));
+            foreach (preg_split('/\R/u', $afterBalance) as $continuation) {
+                $continuation = trim($continuation);
+                if ($continuation === '' || $continuation === '-') continue;
+                if (preg_match('/^(?:Saldo Awal|Saldo Akhir|Mutasi Debit|Mutasi Kredit|Di-request|Mutasi Rekening|Detail Mutasi|Total Transaksi|No\.\s|Tanggal Efektif|Tanggal Transaksi)/iu', $continuation)) {
+                    break;
+                }
+                // Skip PDF page numbers and repeated table header fragments.
+                if (preg_match('/^\d+\/\d+$/', $continuation) ||
+                    in_array(mb_strtolower($continuation), ['tanggal','efektif','transaksi','keterangan','cabang','no referensi','debit','kredit','saldo'], true)) {
+                    continue;
+                }
+                $description .= ' '.$continuation;
+            }
             $description = trim(preg_replace('/\s+/u', ' ', $description));
             if ($description === '') {
                 $errors[] = ['line'=>(int)$match['number'][0], 'text'=>'Keterangan kosong'];
