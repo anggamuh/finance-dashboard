@@ -3,6 +3,8 @@
 namespace App\Livewire\FinanceAi;
 
 use App\Services\FinanceAiContext;
+use App\Services\FinanceAiAudit;
+use App\Models\FinanceAiReport;
 use App\Services\GeminiFinanceAssistant;
 use Livewire\Component;
 
@@ -13,6 +15,10 @@ class Index extends Component
     public array $messages = [];
     public ?string $selectedAccount = null;
     public int $accountPage = 1;
+    public string $investigatorAccount = '';
+    public string $investigatorMin = '';
+    public string $activeTool = 'investigator';
+    public ?int $openReportId = null;
 
     public function mount(): void
     {
@@ -66,6 +72,9 @@ class Index extends Component
         $this->clearChat();
         $this->selectedAccount = null;
         $this->accountPage = 1;
+        $this->investigatorAccount = '';
+        $this->investigatorMin = '';
+        $this->openReportId = null;
     }
 
     public function showAccount(string $code): void
@@ -91,6 +100,46 @@ class Index extends Component
     public function previousAccountPage(): void
     {
         $this->accountPage = max(1, $this->accountPage - 1);
+    }
+
+    public function switchTool(string $tool): void
+    {
+        if (in_array($tool, ['investigator','anomalies','reconciliation','reports'], true)) {
+            $this->activeTool = $tool;
+        }
+    }
+
+    public function saveMonthlyReport(FinanceAiAudit $audit): void
+    {
+        $this->validate(['month'=>['required','date_format:Y-m']]);
+        if (FinanceAiReport::where('user_id',auth()->id())->count() >= 36) {
+            $this->addError('report','Maksimal 36 laporan tersimpan. Hapus laporan lama untuk menyimpan baru.');
+            return;
+        }
+        $snapshot = $audit->snapshot((int)auth()->id(), $this->month);
+        $report = FinanceAiReport::create([
+            'user_id'=>auth()->id(),
+            'month'=>$this->month,
+            'title'=>'Ringkasan Keuangan '.$this->month,
+            'snapshot'=>$snapshot,
+        ]);
+        $this->openReportId = $report->id;
+        $this->activeTool = 'reports';
+        session()->flash('success','Laporan bulanan disimpan. Gunakan tombol Cetak untuk mencetak atau Save as PDF.');
+    }
+
+    public function selectReport(int $id): void
+    {
+        $report = FinanceAiReport::where('user_id',auth()->id())->findOrFail($id);
+        $this->openReportId = $report->id;
+        $this->activeTool = 'reports';
+    }
+
+    public function deleteReport(int $id): void
+    {
+        FinanceAiReport::where('user_id',auth()->id())->findOrFail($id)->delete();
+        if ($this->openReportId === $id) $this->openReportId = null;
+        session()->flash('success','Laporan tersimpan dihapus.');
     }
 
     public function quickQuestion(string $type): void
@@ -134,7 +183,25 @@ class Index extends Component
             }
         }
 
-        return view('livewire.finance-ai.index', compact('dashboard','accountTransactions','accountName'))
+        $audit = app(FinanceAiAudit::class);
+        $investigation = null;
+        if ($this->activeTool === 'investigator') {
+            $minimum = trim($this->investigatorMin);
+            if ($minimum === '' || (is_numeric($minimum) && (float)$minimum >= 0 && (float)$minimum <= 100000000000)) {
+                $investigation = $audit->investigate($this->month,
+                    $this->investigatorAccount === '' ? null : $this->investigatorAccount,
+                    $minimum === '' ? null : (float)$minimum);
+            }
+        }
+        $anomalies = $this->activeTool === 'anomalies' ? $audit->anomalies($this->month) : [];
+        $reconciliationAudit = $this->activeTool === 'reconciliation' ? $audit->reconciliation((int)auth()->id(),$this->month) : [];
+        $savedReports = FinanceAiReport::where('user_id',auth()->id())->latest()->limit(36)->get(['id','month','title','created_at']);
+        $selectedReport = $this->openReportId
+            ? FinanceAiReport::where('user_id',auth()->id())->find($this->openReportId) : null;
+        return view('livewire.finance-ai.index', compact(
+            'dashboard','accountTransactions','accountName','investigation',
+            'anomalies','reconciliationAudit','savedReports','selectedReport'
+        ))
             ->layout('layouts.app');
     }
 }
