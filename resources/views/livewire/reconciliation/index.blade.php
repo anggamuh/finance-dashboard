@@ -85,6 +85,8 @@
                     <input id="ledgerFile" type="file" wire:model="ledgerFile" accept=".csv,.txt,.xls,.xlsx" class="block w-full text-sm">
                     @error('ledgerFile') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
                     <button class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white dark:bg-slate-600" type="submit" wire:loading.attr="disabled">Upload Pembukuan</button>
+                    <button type="button" wire:click="importBcaWorkbook" wire:loading.attr="disabled" class="ml-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Import Sheet BCA Otomatis</button>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Khusus workbook KAS-BANK-GABUNGAN 2026: mengambil sheet BCA, baris judul 2, dan tanggal dalam periode PDF yang sudah disimpan. Tidak memakai pilihan format/baris header di atas.</p>
                 </form>
             </div>
             <div class="mt-5 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">

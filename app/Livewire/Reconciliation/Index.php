@@ -6,6 +6,7 @@ use App\Models\ReconciliationBatch;
 use App\Models\ReconciliationEntry;
 use App\Services\ReconciliationMatcher;
 use App\Services\ReconciliationExcelImporter;
+use App\Services\BcaLedgerWorkbookImporter;
 use App\Services\BankStatementPdfParser;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -88,6 +89,31 @@ class Index extends Component
         } catch (\Throwable $exception) {
             report($exception);
             $this->addError($key, 'File tidak bisa diproses. Periksa format Excel dan coba lagi.');
+        }
+    }
+
+    public function importBcaWorkbook(BcaLedgerWorkbookImporter $reader, ReconciliationExcelImporter $importer): void
+    {
+        $batch = $this->ownedBatch();
+        $this->validate(['ledgerFile'=>'required|file|mimes:xlsx,xls|max:5120']);
+        $bank = $batch->entries()->where('source','bank');
+        if (!(clone $bank)->exists()) {
+            $this->addError('ledgerFile','Upload dan simpan PDF mutasi BCA terlebih dahulu agar periode Excel bisa ditentukan.');
+            return;
+        }
+
+        $from = (clone $bank)->min('posted_at');
+        $to = (clone $bank)->max('posted_at');
+        try {
+            $rows = $reader->read($this->ledgerFile->getRealPath(), $from, $to);
+            $count = $importer->replace($batch, 'ledger', $rows);
+            $this->reset('ledgerFile');
+            session()->flash('success', $count.' transaksi dari sheet BCA berhasil diimpor. Periode: '.$from.' sampai '.$to.'. Jalankan Auto Matching.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->addError('ledgerFile', collect($exception->errors())->flatten()->implode(' | '));
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->addError('ledgerFile','Sheet BCA gagal diproses. Pastikan kolom dan tanggal sesuai format buku bank.');
         }
     }
 
