@@ -8,12 +8,14 @@ use App\Services\ReconciliationMatcher;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class Index extends Component
 {
     use WithFileUploads;
+    use WithPagination;
 
     public string $name = '';
     public string $bankName = '';
@@ -41,6 +43,7 @@ class Index extends Component
     {
         $this->ownedBatch($id);
         $this->batchId = $id;
+        $this->resetPage();
     }
 
     private function ownedBatch(?int $id = null): ReconciliationBatch
@@ -122,7 +125,8 @@ class Index extends Component
                 $this->addError($key,'Tidak ada transaksi valid dalam file.');
                 return;
             }
-            DB::transaction(function () use ($batch,$source,$insert) {
+            try {
+                DB::transaction(function () use ($batch,$source,$insert) {
                 // Replace one source atomically; clearing all suggestions to avoid stale links.
                 $batch->entries()->where('status','!=','matched')->update(['matched_entry_id'=>null,'status'=>'unmatched','confidence'=>null]);
                 if ($batch->entries()->where('source',$source)->where('status','matched')->exists()) {
@@ -130,7 +134,11 @@ class Index extends Component
                 }
                 $batch->entries()->where('source',$source)->delete();
                 foreach (array_chunk($insert,500) as $chunk) ReconciliationEntry::insert($chunk);
-            });
+                });
+            } catch (\DomainException $e) {
+                $this->addError($key, $e->getMessage());
+                return;
+            }
             $this->reset($key);
             session()->flash('success',count($insert).' transaksi '.($source === 'bank' ? 'bank' : 'pembukuan').' diimpor.');
         } finally {
