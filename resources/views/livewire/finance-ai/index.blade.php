@@ -158,7 +158,107 @@
         </section>
     @endif
     
+
+<section class="fai-panel fai-panel-pad fai-suite">
+    <div class="fai-suite-heading">
+        <div><div class="fai-kicker">✦ FINANCE AI · FINAL</div><h2 class="fai-panel-title" style="font-size:20px;margin-top:8px">Investigation & Reporting</h2>
+            <p class="fai-panel-hint">Pemeriksaan langsung dari database tanpa request Gemini tambahan</p></div>
+        <span class="fai-suite-tag">Read-only</span>
+    </div>
+    @if(session('success'))<p class="fai-suite-success">{{ session('success') }}</p>@endif
+    <div class="fai-suite-tabs">
+        @foreach(['investigator'=>'Investigasi Transaksi','anomalies'=>'Anomali','reconciliation'=>'Rekonsiliasi','reports'=>'Laporan Bulanan'] as $tool => $label)
+            <button type="button" wire:click="switchTool('{{ $tool }}')" class="fai-suite-tab {{ $activeTool === $tool ? 'active' : '' }}">{{ $label }}</button>
+        @endforeach
+    </div>
+
+    @if($activeTool === 'investigator')
+        <div class="fai-suite-filters">
+            <label>Akun
+                <select class="fai-suite-input" wire:model.live="investigatorAccount">
+                    <option value="">Semua akun</option>
+                    @foreach($dashboard['accounts'] as $account)
+                        <option value="{{ $account['code'] }}">{{ $account['code'] }} · {{ $account['name'] }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label>Nominal minimum (Rp)
+                <input class="fai-suite-input" type="number" min="0" max="100000000000" wire:model.live.debounce.400ms="investigatorMin" placeholder="5000000">
+            </label>
+        </div>
+        @if($investigation)
+            <div class="fai-suite-info">{{ $investigation['count'] }} transaksi · Total Rp {{ number_format($investigation['total'],0,',','.') }} · Menampilkan maksimal 50 baris</div>
+            <div class="fai-table-wrap"><table class="fai-table">
+                <thead><tr><th>Tanggal</th><th>Akun</th><th>Keterangan</th><th class="num">Nominal</th></tr></thead>
+                <tbody>
+                @forelse($investigation['rows'] as $row)
+                    <tr wire:key="ai-audit-{{ $row['id'] }}"><td>{{ $row['date'] }}</td><td>{{ $row['code'] }} · {{ $row['account'] }}</td><td>{{ $row['description'] }}</td><td class="num">Rp {{ number_format($row['amount'],0,',','.') }}</td></tr>
+                @empty<tr><td colspan="4">Tidak ada transaksi sesuai filter.</td></tr>@endforelse
+                </tbody>
+            </table></div>
+        @else
+            <p class="fai-panel-hint">Masukkan nominal minimum yang valid.</p>
+        @endif
+    @elseif($activeTool === 'anomalies')
+        <p class="fai-panel-hint">Sinyal duplikat dari tanggal, akun, dan nominal yang sama; atau transaksi 3× rata-rata akun dengan minimum Rp1 juta dan minimal 5 transaksi. Ini belum membuktikan kesalahan.</p>
+        <div class="fai-suite-list">
+            @forelse($anomalies as $i => $finding)
+                <div class="fai-suite-item" wire:key="ai-anomaly-{{ $i }}"><strong>{{ $finding['label'] }}</strong><span>{{ $finding['message'] }}</span></div>
+            @empty<p class="fai-panel-hint">Tidak ditemukan indikasi berdasarkan aturan saat ini.</p>@endforelse
+        </div>
+    @elseif($activeTool === 'reconciliation')
+        <p class="fai-panel-hint">Hanya rekonsiliasi milik akun login. Saran belum dihitung sebagai cocok disetujui. Nominal belum cocok tidak sama dengan saldo selisih bersih.</p>
+        <div class="fai-table-wrap"><table class="fai-table">
+            <thead><tr><th>Periode / Bank</th><th class="num">Matched</th><th class="num">Saran</th><th class="num">Belum cocok Bank / Excel</th><th class="num">Nominal belum cocok</th></tr></thead>
+            <tbody>
+            @forelse($reconciliationAudit as $row)
+                <tr><td>{{ $row['label'] }} · {{ $row['bank'] }}</td><td class="num">{{ $row['matched'] }}</td><td class="num">{{ $row['suggested'] }}</td><td class="num">{{ $row['unmatched_bank'] }} / {{ $row['unmatched_ledger'] }}</td><td class="num">BCA: Rp {{ number_format($row['unmatched_bank_total'],0,',','.') }}<br>Excel: Rp {{ number_format($row['unmatched_ledger_total'],0,',','.') }}</td></tr>
+            @empty<tr><td colspan="5">Belum ada rekonsiliasi periode ini.</td></tr>@endforelse
+            </tbody>
+        </table></div>
+    @elseif($activeTool === 'reports')
+        @error('report')<p class="fai-error">{{ $message }}</p>@enderror
+        <div class="fai-suite-save">
+            <div><strong>Laporan {{ $month }}</strong><p class="fai-panel-hint">Snapshot angka terenkripsi · maksimal 36 laporan per pengguna · cetak tanpa npm build</p></div>
+            <button type="button" class="fai-suite-primary" wire:click="saveMonthlyReport" wire:loading.attr="disabled" wire:target="saveMonthlyReport">+ Simpan Laporan</button>
+        </div>
+        <div class="fai-suite-list">
+            @forelse($savedReports as $report)
+                <div class="fai-suite-item fai-suite-report" wire:key="ai-report-{{ $report->id }}">
+                    <button type="button" wire:click="selectReport({{ $report->id }})"><strong>{{ $report->title }}</strong><small>{{ $report->created_at->format('d/m/Y H:i') }}</small></button>
+                    <a class="fai-button" href="{{ route('finance-ai.report',$report->id) }}" target="_blank" rel="noopener noreferrer">Cetak / PDF</a>
+                    <button type="button" class="fai-button" wire:click="deleteReport({{ $report->id }})" wire:confirm="Hapus laporan tersimpan?">Hapus</button>
+                </div>
+            @empty<p class="fai-panel-hint">Belum ada laporan tersimpan.</p>@endforelse
+        </div>
+        @if($selectedReport)
+            <p class="fai-suite-info">Terpilih: {{ $selectedReport->title }} · Beban saat snapshot Rp {{ number_format($selectedReport->snapshot['expenses'] ?? 0,0,',','.') }}</p>
+        @endif
+    @endif
+</section>
+
 <style>
+
+.fai-suite{margin-top:20px}.fai-suite-heading{display:flex;justify-content:space-between;gap:15px;align-items:center}
+.fai-suite-tag{border-radius:20px;padding:7px 12px;background:var(--fa-soft);color:var(--fa-accent);font-size:11px;font-weight:800}
+.fai-suite-tabs{display:flex;overflow-x:auto;gap:8px;margin:22px 0 18px;padding-bottom:13px;border-bottom:1px solid var(--fa-line)}
+.fai-suite-tab{border:1px solid var(--fa-line);border-radius:10px;background:var(--fa-bg);color:var(--fa-text);white-space:nowrap;padding:10px 13px;font-size:11px;font-weight:750}
+.fai-suite-tab.active{background:var(--fa-accent);color:white;border-color:var(--fa-accent)}
+.fai-suite-filters{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.fai-suite-filters label{display:grid;gap:6px;min-width:210px;font-size:11px;color:var(--fa-muted);font-weight:700}
+.fai-suite-input{border:1px solid var(--fa-line);border-radius:9px;background:var(--fa-card);color:var(--fa-text);padding:10px;max-width:100%}
+.fai-suite-info,.fai-suite-success{background:var(--fa-soft);border-radius:10px;padding:12px 14px;margin:10px 0;font-size:12px}
+.fai-suite-list{display:grid;gap:9px;margin-top:16px}
+.fai-suite-item{display:flex;align-items:center;gap:12px;background:var(--fa-bg);border:1px solid var(--fa-line);border-radius:11px;padding:12px}
+.fai-suite-item strong{font-size:12px;flex-shrink:0}.fai-suite-item span{font-size:11px;color:var(--fa-muted);line-height:1.5}
+.fai-suite-save{display:flex;justify-content:space-between;align-items:center;gap:14px}
+.fai-suite-save strong{font-size:13px}
+.fai-suite-primary{border:0;background:var(--fa-accent);color:#fff;font-weight:750;border-radius:10px;padding:11px 14px;font-size:12px}
+.fai-suite-report button:first-child{border:0;text-align:left;flex:1;min-width:0;background:none;color:var(--fa-text)}
+.fai-suite-report small{display:block;color:var(--fa-muted);font-size:10px;margin-top:4px}
+.fai-suite-report a{text-decoration:none}
+@media(max-width:610px){.fai-suite-filters,.fai-suite-save{display:grid}.fai-suite-report{flex-wrap:wrap}.fai-suite-report button:first-child{flex-basis:100%}}
+
 /* Standalone styles: no Tailwind build, external CSS or JS dependencies. */
 .fai{--fa-bg:#f3f7fa;--fa-card:#fff;--fa-text:#16253a;--fa-muted:#708198;--fa-line:#e4ebf1;--fa-accent:#059b78;--fa-soft:#e5f8f1;--fa-shadow:0 14px 42px rgba(23,50,75,.055);color:var(--fa-text);max-width:1500px;margin:0 auto;font-family:inherit}
 .dark .fai{--fa-bg:#101922;--fa-card:#15222e;--fa-text:#eef5f8;--fa-muted:#99aabc;--fa-line:#304250;--fa-soft:#153f37;--fa-shadow:0 14px 42px rgba(0,0,0,.15)}
