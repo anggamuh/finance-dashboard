@@ -17,6 +17,7 @@ use App\Livewire\Transactions\Index as TransactionIndex;
 use App\Livewire\Upload\Index as UploadIndex;
 use App\Livewire\CashBook\Index as CashBookIndex;
 use App\Livewire\Reconciliation\Index as ReconciliationIndex;
+use App\Livewire\FinanceAi\Index as FinanceAiIndex;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
 
@@ -51,6 +52,7 @@ Route::middleware([Authenticate::class])->group(function () {
         ->name('accurate');
     Route::get('/buku-besar', App\Livewire\Ledger\Index::class)->name('ledger.index');
     Route::get('/reconciliation', ReconciliationIndex::class)->name('reconciliation.index');
+    Route::get('/finance-ai', FinanceAiIndex::class)->name('finance-ai.index');
     Route::get('/buku-kas', CashBookIndex::class)
     ->name('cash-book');
     Route::get('/internal-operational-costs', InternalOperationalCostIndex::class)
