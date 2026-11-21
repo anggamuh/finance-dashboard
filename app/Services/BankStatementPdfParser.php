@@ -7,7 +7,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Conservative text-PDF parser. Never imports directly: always requires preview confirmation.
- * Requires poppler's pdftotext executable and proc_open on the PHP host.
+ * Uses a pure-PHP library: no shell execution, pdftotext, or proc_open required.
  * Image-only PDFs need OCR and are intentionally rejected.
  */
 class BankStatementPdfParser
@@ -23,34 +23,32 @@ class BankStatementPdfParser
         if ($signature !== '%PDF-') {
             throw ValidationException::withMessages(['bankPdf'=>'File bukan PDF yang valid.']);
         }
-        if (!function_exists('proc_open')) {
-            throw ValidationException::withMessages(['bankPdf'=>'Ekstraksi PDF belum didukung di hosting ini (proc_open dinonaktifkan).']);
+        if (!class_exists(\Smalot\PdfParser\Parser::class)) {
+            throw ValidationException::withMessages(['bankPdf' =>
+                'Library PDF belum terpasang. Jalankan composer require smalot/pdfparser:^2.13 di lokal, lalu deploy vendor/lock yang diperbarui.'
+            ]);
         }
 
-        $out = tempnam(sys_get_temp_dir(), 'bank-text-');
         try {
-            // Array-form command avoids the shell, and the input path is never interpolated.
-            $command = ['pdftotext', '-layout', '-nopgbrk', '-enc', 'UTF-8', $path, $out];
-            $descriptors = [1 => ['pipe','w'], 2 => ['pipe','w']];
-            $process = @proc_open($command, $descriptors, $pipes);
-            if (!is_resource($process)) {
-                throw ValidationException::withMessages(['bankPdf'=>'pdftotext belum tersedia di server.']);
-            }
-            $stdout = stream_get_contents($pipes[1]);
-            $stderr = stream_get_contents($pipes[2]);
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-            if (proc_close($process) !== 0) {
-                throw ValidationException::withMessages(['bankPdf'=>'PDF tidak dapat dibaca (mungkin terenkripsi atau bermasalah).']);
-            }
-            $text = (string) file_get_contents($out);
-            if (trim($text) === '') {
-                throw ValidationException::withMessages(['bankPdf'=>'PDF tidak memiliki teks yang bisa diekstrak. PDF hasil scan memerlukan OCR.']);
-            }
-            return $this->parse($text);
-        } finally {
-            @unlink($out);
+            // Cap decompression memory for PDFs from untrusted sources.
+            $config = new \Smalot\PdfParser\Config();
+            $config->setDecodeMemoryLimit(64 * 1024 * 1024);
+            $parser = new \Smalot\PdfParser\Parser([], $config);
+            $text = $parser->parseFile($path)->getText();
+        } catch (\Throwable $exception) {
+            report($exception);
+            throw ValidationException::withMessages(['bankPdf' =>
+                'Isi PDF tidak bisa dibaca. Coba PDF teks tanpa password, bukan hasil scan.'
+            ]);
         }
+
+        if (trim((string) $text) === '') {
+            throw ValidationException::withMessages(['bankPdf' =>
+                'PDF ini tidak berisi teks yang bisa diekstrak. PDF hasil scan perlu OCR.'
+            ]);
+        }
+
+        return $this->parse($text);
     }
 
     public function parse(string $text): array
