@@ -5,6 +5,7 @@ namespace App\Livewire\FinanceAi;
 use App\Services\FinanceAiContext;
 use App\Services\FinanceAiAudit;
 use App\Models\FinanceAiReport;
+use App\Models\FinanceAiChat;
 use App\Services\GeminiFinanceAssistant;
 use Livewire\Component;
 
@@ -19,6 +20,7 @@ class Index extends Component
     public string $investigatorMin = '';
     public string $activeTool = 'investigator';
     public ?int $openReportId = null;
+    public ?int $openChatId = null;
 
     public function mount(): void
     {
@@ -100,6 +102,55 @@ class Index extends Component
     public function previousAccountPage(): void
     {
         $this->accountPage = max(1, $this->accountPage - 1);
+    }
+
+    public function saveChat(): void
+    {
+        if (!$this->messages) {
+            $this->addError('chat','Belum ada percakapan untuk disimpan.');
+            return;
+        }
+        if (FinanceAiChat::where('user_id',auth()->id())->count() >= 25) {
+            $this->addError('chat','Batas 25 percakapan tersimpan tercapai. Hapus percakapan lama terlebih dulu.');
+            return;
+        }
+        $messages = collect(array_slice($this->messages,-12))->filter(fn ($row) =>
+            is_array($row)
+            && in_array($row['role'] ?? null,['user','assistant'],true)
+            && is_string($row['text'] ?? null)
+            && ($row['month'] ?? null) === $this->month
+        )->map(fn ($row) => [
+            'role'=>$row['role'],
+            'month'=>$this->month,
+            'text'=>mb_substr($row['text'],0,7000),
+        ])->values()->all();
+        if (!$messages) return;
+        $firstUser = collect($messages)->firstWhere('role','user');
+        $chat = FinanceAiChat::create([
+            'user_id'=>auth()->id(),
+            'month'=>$this->month,
+            'title'=>mb_substr($firstUser['text'] ?? 'Finance AI chat',0,90),
+            'messages'=>$messages,
+        ]);
+        $this->openChatId = $chat->id;
+        session()->flash('success','Percakapan disimpan terenkripsi.');
+    }
+
+    public function loadChat(int $id): void
+    {
+        $chat = FinanceAiChat::where('user_id',auth()->id())->findOrFail($id);
+        $this->month = $chat->month;
+        $this->messages = array_slice((array)$chat->messages,-12);
+        $this->openChatId = $chat->id;
+        $this->selectedAccount = null;
+        $this->accountPage = 1;
+    }
+
+    public function deleteChat(int $id): void
+    {
+        FinanceAiChat::where('user_id',auth()->id())->findOrFail($id)->delete();
+        if ($this->openChatId === $id) $this->openChatId = null;
+        session()->flash('success','Riwayat percakapan dihapus.');
     }
 
     public function switchTool(string $tool): void
@@ -196,11 +247,12 @@ class Index extends Component
         $anomalies = $this->activeTool === 'anomalies' ? $audit->anomalies($this->month) : [];
         $reconciliationAudit = $this->activeTool === 'reconciliation' ? $audit->reconciliation((int)auth()->id(),$this->month) : [];
         $savedReports = FinanceAiReport::where('user_id',auth()->id())->latest()->limit(36)->get(['id','month','title','created_at']);
+        $savedChats = FinanceAiChat::where('user_id',auth()->id())->latest()->limit(25)->get(['id','month','title','created_at']);
         $selectedReport = $this->openReportId
             ? FinanceAiReport::where('user_id',auth()->id())->find($this->openReportId) : null;
         return view('livewire.finance-ai.index', compact(
             'dashboard','accountTransactions','accountName','investigation',
-            'anomalies','reconciliationAudit','savedReports','selectedReport'
+            'anomalies','reconciliationAudit','savedReports','selectedReport','savedChats'
         ))
             ->layout('layouts.app');
     }
