@@ -62,7 +62,11 @@ class ReconciliationMatcher
                 throw new \DomainException('Pasangan transaksi tidak valid.');
             }
             foreach ([$entry, $other] as $row) {
-                $row->update(['status'=>$approve ? 'matched' : 'unmatched','matched_entry_id'=>$approve ? $other->id === $row->id ? $entry->id : ($row->id === $entry->id ? $other->id : $entry->id) : null,'confidence'=>$approve ? $row->confidence : null]);
+                $row->update([
+                    'status' => $approve ? 'matched' : 'unmatched',
+                    'matched_entry_id' => $approve ? ($row->id === $entry->id ? $other->id : $entry->id) : null,
+                    'confidence' => $approve ? $row->confidence : null,
+                ]);
             }
         });
     }
