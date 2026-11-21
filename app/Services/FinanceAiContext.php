@@ -75,6 +75,22 @@ class FinanceAiContext
         } else {
             $insights[] = ['title'=>'Perbandingan terbatas', 'detail'=>'Tidak ada beban bulan sebelumnya untuk menghitung persentase perubahan.', 'type'=>'info'];
         }
+        $previousByAccount = (clone $prev)
+            ->selectRaw('account_code, SUM(debit) as total')
+            ->groupBy('account_code')->pluck('total', 'account_code');
+        $largestIncrease = collect($byAccount)
+            ->map(fn ($r) => [
+                'name'=>$r['name'],
+                'code'=>$r['code'],
+                'increase'=>$r['amount'] - (float)($previousByAccount[$r['code']] ?? 0),
+            ])->sortByDesc('increase')->first();
+        if ($largestIncrease !== null && $largestIncrease['increase'] > 0) {
+            $insights[] = [
+                'title'=>'Kenaikan akun terbesar: '.$largestIncrease['name'],
+                'detail'=>'Naik Rp '.number_format($largestIncrease['increase'],0,',','.').' dibanding bulan lalu. Ini kontribusi angka per akun, belum membuktikan penyebab operasionalnya.',
+                'type'=>'warning',
+            ];
+        }
         if ($byAccount !== []) {
             $top = $byAccount[0];
             $insights[] = [
