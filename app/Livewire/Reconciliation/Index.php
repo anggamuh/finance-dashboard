@@ -25,6 +25,7 @@ class Index extends Component
     public $bankFile;
     public $ledgerFile;
     public $bankPdf;
+    public array $manualLedger = [];
     public array $pdfPreview = [];
     public array $pdfUnrecognized = [];
     public int $headerRow = 1;
@@ -156,6 +157,26 @@ class Index extends Component
         session()->flash('success','Pencocokan selesai. Konfirmasi hasil yang disarankan.');
     }
 
+    public function proposeManual(int $bankId, ReconciliationMatcher $matcher): void
+    {
+        $batch = $this->ownedBatch();
+        $ledgerId = filter_var($this->manualLedger[$bankId] ?? null, FILTER_VALIDATE_INT);
+        if (!$ledgerId) {
+            $this->addError('manualLedger.'.$bankId, 'Pilih pasangan Excel dulu.');
+            return;
+        }
+
+        try {
+            $bank = $batch->entries()->where('source','bank')->findOrFail($bankId);
+            // Service validates the selected ledger row belongs to the same batch.
+            $matcher->proposeManual($bank, $ledgerId);
+            unset($this->manualLedger[$bankId]);
+            session()->flash('success', 'Pasangan manual diajukan. Klik Setujui setelah diperiksa.');
+        } catch (\DomainException $exception) {
+            $this->addError('manualLedger.'.$bankId, $exception->getMessage());
+        }
+    }
+
     public function decide(int $entryId, bool $approve, ReconciliationMatcher $matcher): void
     {
         $entry = $this->ownedBatch()->entries()->findOrFail($entryId);
@@ -169,6 +190,35 @@ class Index extends Component
         $batch = $this->batchId ? $this->ownedBatch() : null;
         $entries = $batch ? $batch->entries()->with('match')->where('source','bank')->orderByDesc('posted_at')->paginate(25) : null;
         $counts = $batch ? $batch->entries()->where('source','bank')->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total','status') : collect();
-        return view('livewire.reconciliation.index',compact('batches','batch','entries','counts'))->layout('layouts.app');
+        $bankCount = $batch ? $batch->entries()->where('source','bank')->count() : 0;
+        $ledgerCount = $batch ? $batch->entries()->where('source','ledger')->count() : 0;
+        $ledgerRows = collect();
+        $diagnostics = [];
+        $manualOptions = [];
+        if ($entries && $ledgerCount > 0) {
+            // Diagnostics and candidate options are computed only for the current page.
+            $bankPage = $entries->getCollection();
+            $amounts = $bankPage->pluck('amount')->unique()->values()->all();
+            $ledgerRows = $batch->entries()->where('source','ledger')
+                ->whereIn('amount',$amounts)->get();
+            foreach ($bankPage as $bankRow) {
+                $diagnostics[$bankRow->id] = app(ReconciliationMatcher::class)->diagnose($bankRow, $ledgerRows);
+                $manualOptions[$bankRow->id] = $ledgerRows->filter(fn ($row) =>
+                    $row->status === 'unmatched' &&
+                    $row->direction === $bankRow->direction &&
+                    (string)$row->amount === (string)$bankRow->amount
+                )->take(30)->map(fn ($row) => [
+                    'id'=>$row->id,
+                    'label'=>$row->posted_at->format('d/m/Y').' | '.mb_strimwidth($row->description ?? '-',0,45,'…').' | Rp '.number_format((float)$row->amount,0,',','.'),
+                ])->values()->all();
+            }
+        } elseif ($entries) {
+            foreach ($entries as $bankRow) {
+                $diagnostics[$bankRow->id] = app(ReconciliationMatcher::class)->diagnose($bankRow, collect());
+            }
+        }
+        return view('livewire.reconciliation.index',compact(
+            'batches','batch','entries','counts','bankCount','ledgerCount','diagnostics','manualOptions'
+        ))->layout('layouts.app');
     }
 }
