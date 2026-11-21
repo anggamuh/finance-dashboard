@@ -42,6 +42,15 @@
                 </div>
             @endforeach
         </div>
+        <div class="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200">
+            <p class="font-semibold">Data tersedia untuk dicocokkan</p>
+            <p class="mt-1">Bank: <strong>{{ $bankCount }}</strong> transaksi · Excel pembukuan: <strong>{{ $ledgerCount }}</strong> transaksi</p>
+            @if($bankCount > 0 && $ledgerCount === 0)
+                <p class="mt-2">Belum ada data pembukuan dalam periode ini. Upload dan pastikan menekan tombol <strong>Upload Pembukuan</strong> sampai muncul notifikasi berhasil.</p>
+            @elseif($bankCount > 0 && $ledgerCount > 0)
+                <p class="mt-2">Jika masih belum match, lihat kolom <strong>Diagnosis</strong>. Excel dengan arus masuk/keluar terbalik atau transaksi gabungan tidak akan dipasangkan otomatis.</p>
+            @endif
+        </div>
         <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
             <h2 class="font-semibold">Import transaksi</h2>
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Upload CSV/XLS/XLSX langsung dari Excel. Pilih format sesuai kolom file, baris judul, dan sheet. Maksimum 10.000 transaksi/file. Upload ulang tidak diizinkan jika ada pasangan yang sudah disetujui.</p>
@@ -126,7 +135,7 @@
             <div class="border-b border-slate-200 p-5 dark:border-slate-700"><h2 class="font-semibold">Review transaksi bank</h2><p class="text-sm text-slate-500">Hanya pasangan yang unik dan nominal/arahnya sama yang disarankan otomatis.</p></div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[900px] text-left text-sm">
-                    <thead class="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900/50"><tr><th class="p-3">Tanggal</th><th class="p-3">Bank</th><th class="p-3">Nominal</th><th class="p-3">Pasangan pembukuan</th><th class="p-3">Status</th><th class="p-3">Aksi</th></tr></thead>
+                    <thead class="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900/50"><tr><th class="p-3">Tanggal</th><th class="p-3">Bank</th><th class="p-3">Nominal</th><th class="p-3">Pasangan pembukuan</th><th class="p-3">Status</th><th class="p-3">Diagnosis / Pair Manual</th><th class="p-3">Aksi</th></tr></thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                     @forelse($entries as $entry)
                         <tr wire:key="recon-{{ $entry->id }}">
@@ -135,6 +144,21 @@
                             <td class="p-3 whitespace-nowrap">{{ $entry->direction === 'in' ? '+' : '-' }} Rp {{ number_format($entry->amount,2,',','.') }}</td>
                             <td class="p-3">{{ $entry->match?->description ?? '—' }} @if($entry->match)<div class="text-xs text-slate-500">{{ $entry->match->posted_at->format('d/m/Y') }}</div>@endif</td>
                             <td class="p-3"><span class="rounded-lg bg-slate-100 px-2 py-1 text-xs dark:bg-slate-700">{{ match($entry->status) {'matched'=>'Cocok', 'suggested'=>'Saran '.$entry->confidence.'%', default=>'Belum cocok'} }}</span></td>
+                            <td class="p-3 min-w-[260px]">
+                                <p class="text-xs text-slate-500 dark:text-slate-400">{{ $diagnostics[$entry->id]['label'] ?? '—' }}</p>
+                                @if($entry->status === 'unmatched' && !empty($manualOptions[$entry->id]))
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        <select wire:model="manualLedger.{{ $entry->id }}" class="max-w-[250px] rounded-lg border-slate-300 text-xs dark:border-slate-600 dark:bg-slate-900">
+                                            <option value="">Pilih transaksi Excel...</option>
+                                            @foreach($manualOptions[$entry->id] as $option)
+                                                <option value="{{ $option['id'] }}">{{ $option['label'] }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button wire:click="proposeManual({{ $entry->id }})" class="rounded-lg bg-sky-600 px-3 py-1.5 text-xs text-white">Ajukan pasangan</button>
+                                    </div>
+                                    @error('manualLedger.'.$entry->id) <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                                @endif
+                            </td>
                             <td class="p-3 whitespace-nowrap">
                                 @if($entry->status === 'suggested')
                                     <button wire:click="decide({{ $entry->id }}, true)" wire:confirm="Setujui pasangan transaksi ini?" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs text-white">Setujui</button>
@@ -142,7 +166,7 @@
                                 @else — @endif
                             </td>
                         </tr>
-                    @empty <tr><td colspan="6" class="p-8 text-center text-slate-500">Belum ada mutasi bank. Silakan upload file.</td></tr> @endforelse
+                    @empty <tr><td colspan="7" class="p-8 text-center text-slate-500">Belum ada mutasi bank. Silakan upload file.</td></tr> @endforelse
                     </tbody>
                 </table>
             </div>
