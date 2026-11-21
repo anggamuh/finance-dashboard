@@ -6,6 +6,7 @@ use App\Models\ReconciliationBatch;
 use App\Models\ReconciliationEntry;
 use App\Services\ReconciliationMatcher;
 use App\Services\ReconciliationExcelImporter;
+use App\Services\BankStatementPdfParser;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -23,6 +24,9 @@ class Index extends Component
     public ?int $batchId = null;
     public $bankFile;
     public $ledgerFile;
+    public $bankPdf;
+    public array $pdfPreview = [];
+    public array $pdfUnrecognized = [];
     public int $headerRow = 1;
     public string $importMode = 'separated';
     public string $sheetName = '';
@@ -47,6 +51,7 @@ class Index extends Component
     {
         $this->ownedBatch($id);
         $this->batchId = $id;
+        $this->reset('bankPdf','pdfPreview','pdfUnrecognized');
         $this->resetPage();
     }
 
@@ -82,6 +87,59 @@ class Index extends Component
         } catch (\Throwable $exception) {
             report($exception);
             $this->addError($key, 'File tidak bisa diproses. Periksa format Excel dan coba lagi.');
+        }
+    }
+
+    public function previewBankPdf(BankStatementPdfParser $parser): void
+    {
+        $this->ownedBatch();
+        $this->reset('pdfPreview','pdfUnrecognized');
+        $this->validate(['bankPdf'=>'required|file|mimes:pdf|max:10240']);
+        try {
+            $result = $parser->extract($this->bankPdf->getRealPath());
+            $this->pdfUnrecognized = array_slice($result['unrecognized'],0,20);
+            // Avoid storing a large financial statement inside Livewire's browser state.
+            if (count($result['entries']) > 300) {
+                $this->addError('bankPdf','Lebih dari 300 transaksi. Untuk keamanan, ekspor sebagai Excel/CSV atau pecah PDF per periode.');
+                return;
+            }
+            $this->pdfPreview = $result['entries'];
+            if (!$result['ready']) {
+                $this->pdfPreview = [];
+                $this->addError('bankPdf','Sebagian baris transaksi tidak dikenali, atau format PDF belum didukung. Data tidak akan diimpor. Gunakan Excel/CSV atau sesuaikan parser bank.');
+            }
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->addError('bankPdf', collect($exception->errors())->flatten()->implode(' | '));
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->addError('bankPdf','PDF tidak bisa diproses. Pastikan format teks bank didukung.');
+        }
+    }
+
+    public function confirmBankPdf(ReconciliationExcelImporter $importer): void
+    {
+        $batch = $this->ownedBatch();
+        if (count($this->pdfPreview) === 0 || count($this->pdfPreview) > 300 || $this->pdfUnrecognized) {
+            $this->addError('bankPdf','Tidak ada preview valid untuk disimpan.');
+            return;
+        }
+        // Validate preview data supplied by the Livewire client before committing.
+        foreach ($this->pdfPreview as $row) {
+            if (!is_array($row) ||
+                !isset($row['posted_at'],$row['description'],$row['reference'],$row['direction'],$row['amount']) ||
+                !in_array($row['direction'], ['in','out'], true) ||
+                !preg_match('/^\d{4}-\d{2}-\d{2}$/',(string)$row['posted_at']) ||
+                !is_numeric($row['amount']) || $row['amount'] <= 0) {
+                $this->addError('bankPdf','Data preview tidak valid, upload ulang PDF.');
+                return;
+            }
+        }
+        try {
+            $total = $importer->replace($batch,'bank',$this->pdfPreview);
+            $this->reset('bankPdf','pdfPreview','pdfUnrecognized');
+            session()->flash('success',"$total transaksi PDF disimpan. Lanjutkan auto matching dan review.");
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->addError('bankPdf', collect($exception->errors())->flatten()->implode(' | '));
         }
     }
 
