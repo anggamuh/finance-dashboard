@@ -50,6 +50,71 @@ class ReconciliationMatcher
         });
     }
 
+    /**
+     * Explain why automatic matching could not make a safe suggestion.
+     * For diagnostics only: never approves or writes records.
+     */
+    public function diagnose(ReconciliationEntry $bank, \Illuminate\Support\Collection $ledger): array
+    {
+        if ($bank->status === 'matched') {
+            return ['reason'=>'matched','label'=>'Sudah disetujui','candidates'=>[]];
+        }
+        if ($bank->status === 'suggested') {
+            return ['reason'=>'suggested','label'=>'Menunggu persetujuan','candidates'=>[]];
+        }
+        if ($ledger->isEmpty()) {
+            return ['reason'=>'empty','label'=>'Pembukuan Excel belum diupload atau kosong','candidates'=>[]];
+        }
+        $active = $ledger->where('status','!=','matched');
+        $sameAmount = $active->filter(fn ($row) => (string)$row->amount === (string)$bank->amount);
+        $sameDirection = $sameAmount->where('direction',$bank->direction);
+        $nearby = $sameDirection->filter(fn ($row) =>
+            abs(Carbon::parse($row->posted_at)->diffInDays(Carbon::parse($bank->posted_at), false)) <= 3
+        );
+        $candidateRows = $nearby->sortBy(fn ($row) => abs(Carbon::parse($row->posted_at)->diffInDays(Carbon::parse($bank->posted_at), false)))
+            ->take(5)->map(fn ($row) => [
+                'id'=>$row->id,
+                'date'=>$row->posted_at->format('d/m/Y'),
+                'description'=>$row->description,
+                'amount'=>$row->amount,
+            ])->values()->all();
+
+        if ($nearby->count() > 1) {
+            return ['reason'=>'ambiguous','label'=>'Beberapa kandidat dengan nominal sama','candidates'=>$candidateRows];
+        }
+        if ($nearby->count() === 1) {
+            return ['reason'=>'competing','label'=>'Kandidat dipakai transaksi lain / perlu review','candidates'=>$candidateRows];
+        }
+        if ($sameDirection->isNotEmpty()) {
+            return ['reason'=>'date','label'=>'Nominal dan arah cocok, tetapi tanggal selisih lebih dari 3 hari','candidates'=>[]];
+        }
+        if ($sameAmount->isNotEmpty()) {
+            return ['reason'=>'direction','label'=>'Nominal sama, tetapi arah masuk/keluar berlawanan. Periksa mapping Excel.','candidates'=>[]];
+        }
+        return ['reason'=>'amount','label'=>'Nominal tidak ditemukan di pembukuan. Periksa transaksi gabungan/biaya admin.','candidates'=>[]];
+    }
+
+    /**
+     * Explicitly pair one bank row and one ledger row after human review.
+     * Amount and direction must match; never silently tolerates discrepancies.
+     */
+    public function proposeManual(ReconciliationEntry $bank, int $ledgerId): void
+    {
+        DB::transaction(function () use ($bank, $ledgerId) {
+            $bank = ReconciliationEntry::query()->lockForUpdate()->findOrFail($bank->id);
+            $ledger = ReconciliationEntry::query()->lockForUpdate()->findOrFail($ledgerId);
+            if ($bank->source !== 'bank' || $ledger->source !== 'ledger' ||
+                $bank->batch_id !== $ledger->batch_id ||
+                $bank->status !== 'unmatched' || $ledger->status !== 'unmatched' ||
+                $bank->direction !== $ledger->direction ||
+                (string)$bank->amount !== (string)$ledger->amount) {
+                throw new \DomainException('Pasangan harus belum cocok, satu periode, dengan nominal dan arah yang sama.');
+            }
+            $bank->update(['status'=>'suggested','matched_entry_id'=>$ledger->id,'confidence'=>null]);
+            $ledger->update(['status'=>'suggested','matched_entry_id'=>$bank->id,'confidence'=>null]);
+        });
+    }
+
     public function decide(ReconciliationEntry $entry, bool $approve): void
     {
         DB::transaction(function () use ($entry, $approve) {
