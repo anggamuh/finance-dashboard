@@ -51,6 +51,39 @@ class ReconciliationTest extends TestCase
         $this->assertSame('unmatched',$bank->fresh()->status);
     }
 
+    public function test_diagnosis_detects_opposite_direction_and_missing_ledger(): void
+    {
+        $batch = ReconciliationBatch::create(['user_id'=>User::factory()->create()->id,'name'=>'Oktober']);
+        $bank = $this->row($batch,'bank','2026-10-03','1830800.00','out');
+        $matcher = app(ReconciliationMatcher::class);
+        $this->assertSame('empty',$matcher->diagnose($bank,collect())['reason']);
+
+        $ledger = $this->row($batch,'ledger','2026-10-03','1830800.00','in');
+        $this->assertSame('direction',$matcher->diagnose($bank,collect([$ledger]))['reason']);
+    }
+
+    public function test_explicit_manual_pair_requires_matching_direction_and_amount(): void
+    {
+        $batch = ReconciliationBatch::create(['user_id'=>User::factory()->create()->id,'name'=>'Oktober']);
+        $bank = $this->row($batch,'bank','2026-10-03','1830800.00','out');
+        $ledger = $this->row($batch,'ledger','2026-10-10','1830800.00','out');
+        $matcher = app(ReconciliationMatcher::class);
+        $matcher->proposeManual($bank,$ledger->id);
+        $this->assertSame('suggested',$bank->fresh()->status);
+        $this->assertSame($ledger->id,$bank->fresh()->matched_entry_id);
+        $matcher->decide($bank,true);
+        $this->assertSame('matched',$bank->fresh()->status);
+    }
+
+    public function test_manual_pair_rejects_opposite_direction(): void
+    {
+        $batch = ReconciliationBatch::create(['user_id'=>User::factory()->create()->id,'name'=>'Oktober']);
+        $bank = $this->row($batch,'bank','2026-10-03','1830800.00','out');
+        $ledger = $this->row($batch,'ledger','2026-10-03','1830800.00','in');
+        $this->expectException(\DomainException::class);
+        app(ReconciliationMatcher::class)->proposeManual($bank,$ledger->id);
+    }
+
     public function test_reconciliation_page_requires_login(): void
     {
         $this->get(route('reconciliation.index'))->assertRedirect();
