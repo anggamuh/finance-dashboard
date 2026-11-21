@@ -15,7 +15,88 @@ use Illuminate\Support\Facades\DB;
  */
 class FinanceAiContext
 {
-    private const EXPENSE_CODES = ['5311','5313','5314','5315','5317','5320','5322','5399'];
+    public const EXPENSE_CODES = ['5311','5313','5314','5315','5317','5320','5322','5399'];
+
+    public function expenseQuery(string $start, string $end): \Illuminate\Database\Eloquent\Builder
+    {
+        return Transaction::query()
+            ->whereBetween('transaction_date', [$start,$end])
+            ->whereNotIn('account_name', ['Bank BCA','Petty Cash'])
+            ->where(fn ($q) => $q->whereNull('description')->orWhere('description', 'not like', 'Saldo per%'))
+            ->where('debit', '>', 0)
+            ->whereIn(DB::raw('SUBSTR(account_code, 1, 4)'), self::EXPENSE_CODES);
+    }
+
+    public function dashboard(string $month): array
+    {
+        $period = CarbonImmutable::createFromFormat('!Y-m', $month);
+        if (!$period || $period->format('Y-m') !== $month) {
+            throw new \InvalidArgumentException('Periode tidak valid.');
+        }
+        $start = $period->startOfMonth()->toDateString();
+        $end = $period->endOfMonth()->toDateString();
+        $previous = $period->subMonth();
+        $prevStart = $previous->startOfMonth()->toDateString();
+        $prevEnd = $previous->endOfMonth()->toDateString();
+
+        $current = $this->expenseQuery($start, $end);
+        $prev = $this->expenseQuery($prevStart, $prevEnd);
+        $total = (float)(clone $current)->sum('debit');
+        $prevTotal = (float)(clone $prev)->sum('debit');
+        $byAccount = (clone $current)
+            ->selectRaw('account_code, account_name, COUNT(*) as transaction_count, SUM(debit) as total')
+            ->groupBy('account_code', 'account_name')
+            ->orderByDesc('total')->limit(8)->get()
+            ->map(fn ($r) => [
+                'code'=>(string)$r->account_code,
+                'name'=>(string)$r->account_name,
+                'amount'=>round((float)$r->total, 2),
+                'count'=>(int)$r->transaction_count,
+            ])->all();
+
+        $chart = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $d = $period->subMonths($i);
+            $chart[] = [
+                'month'=>$d->format('Y-m'),
+                'label'=>$d->translatedFormat('M Y'),
+                'total'=>round((float)$this->expenseQuery($d->startOfMonth()->toDateString(), $d->endOfMonth()->toDateString())->sum('debit'),2),
+            ];
+        }
+
+        $insights = [];
+        $delta = $total - $prevTotal;
+        if ($prevTotal > 0) {
+            $insights[] = [
+                'title'=>$delta > 0 ? 'Beban naik' : ($delta < 0 ? 'Beban turun' : 'Beban stabil'),
+                'detail'=>'Perubahan '.number_format(abs($delta),0,',','.').' rupiah ('.number_format(abs($delta / $prevTotal * 100),1,',','.').'%) dari bulan sebelumnya.',
+                'type'=>$delta > 0 ? 'warning' : 'info',
+            ];
+        } else {
+            $insights[] = ['title'=>'Perbandingan terbatas', 'detail'=>'Tidak ada beban bulan sebelumnya untuk menghitung persentase perubahan.', 'type'=>'info'];
+        }
+        if ($byAccount !== []) {
+            $top = $byAccount[0];
+            $insights[] = [
+                'title'=>'Beban terbesar: '.$top['name'],
+                'detail'=>'Rp '.number_format($top['amount'],0,',','.').' dari '.number_format($total,0,',','.').' total beban operasional. Klik akun untuk melihat rinciannya.',
+                'type'=>'info',
+            ];
+        }
+        if ($total <= 0) {
+            $insights[] = ['title'=>'Belum ada beban', 'detail'=>'Tidak ditemukan transaksi beban operasional untuk periode yang dipilih.', 'type'=>'info'];
+        }
+
+        return [
+            'month'=>$month,
+            'total'=>$total,
+            'previous_total'=>$prevTotal,
+            'delta'=>$delta,
+            'chart'=>$chart,
+            'accounts'=>$byAccount,
+            'insights'=>$insights,
+        ];
+    }
 
     public function forMonth(int $userId, string $month): array
     {
@@ -28,17 +109,7 @@ class FinanceAiContext
         $priorStart = $date->subMonth()->startOfMonth()->toDateString();
         $priorEnd = $date->subMonth()->endOfMonth()->toDateString();
 
-        $expenses = function (string $from, string $to) {
-            return Transaction::query()
-                ->whereBetween('transaction_date', [$from,$to])
-                ->whereNotIn('account_name',['Bank BCA','Petty Cash'])
-                ->where(function ($query) {
-                    $query->whereNull('description')
-                          ->orWhere('description','not like','Saldo per%');
-                })
-                ->where('debit','>',0)
-                ->whereIn(DB::raw('SUBSTR(account_code, 1, 4)'), self::EXPENSE_CODES);
-        };
+        $expenses = fn (string $from, string $to) => $this->expenseQuery($from, $to);
 
         $totals = fn ($query) => [
             'jumlah_transaksi'=>(int)(clone $query)->count(),
