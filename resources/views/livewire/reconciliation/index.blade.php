@@ -143,7 +143,7 @@
                             <td class="p-3"><div class="font-medium">{{ $entry->description }}</div><div class="text-xs text-slate-500">{{ $entry->reference }}</div></td>
                             <td class="p-3 whitespace-nowrap">{{ $entry->direction === 'in' ? '+' : '-' }} Rp {{ number_format($entry->amount,2,',','.') }}</td>
                             <td class="p-3">{{ $entry->match?->description ?? '—' }} @if($entry->match)<div class="text-xs text-slate-500">{{ $entry->match->posted_at->format('d/m/Y') }}</div>@endif</td>
-                            <td class="p-3"><span class="rounded-lg bg-slate-100 px-2 py-1 text-xs dark:bg-slate-700">{{ match($entry->status) {'matched'=>'Cocok', 'suggested'=>'Saran '.$entry->confidence.'%', default=>'Belum cocok'} }}</span></td>
+                            <td class="p-3"><span class="rounded-lg bg-slate-100 px-2 py-1 text-xs dark:bg-slate-700">{{ match($entry->status) {'matched'=>'Cocok', 'suggested'=>$entry->confidence === null ? 'Saran manual' : 'Saran '.$entry->confidence.'%', default=>'Belum cocok'} }}</span></td>
                             <td class="p-3 min-w-[260px]">
                                 <p class="text-xs text-slate-500 dark:text-slate-400">{{ $diagnostics[$entry->id]['label'] ?? '—' }}</p>
                                 @if($entry->status === 'unmatched' && !empty($manualOptions[$entry->id]))
