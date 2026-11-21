@@ -92,7 +92,8 @@ class Index extends Component
 
     public function previewBankPdf(BankStatementPdfParser $parser): void
     {
-        $this->ownedBatch();
+        $batch = $this->ownedBatch();
+        session()->forget('reconciliation_pdf_preview_'.auth()->id().'_'.$batch->id);
         $this->reset('pdfPreview','pdfUnrecognized');
         $this->validate(['bankPdf'=>'required|file|mimes:pdf|max:10240']);
         try {
@@ -107,6 +108,9 @@ class Index extends Component
             if (!$result['ready']) {
                 $this->pdfPreview = [];
                 $this->addError('bankPdf','Sebagian baris transaksi tidak dikenali, atau format PDF belum didukung. Data tidak akan diimpor. Gunakan Excel/CSV atau sesuaikan parser bank.');
+            } else {
+                // Store the verified payload server-side rather than trusting editable Livewire state.
+                session()->put('reconciliation_pdf_preview_'.auth()->id().'_'.$batch->id, $result['entries']);
             }
         } catch (\Illuminate\Validation\ValidationException $exception) {
             $this->addError('bankPdf', collect($exception->errors())->flatten()->implode(' | '));
@@ -119,12 +123,14 @@ class Index extends Component
     public function confirmBankPdf(ReconciliationExcelImporter $importer): void
     {
         $batch = $this->ownedBatch();
-        if (count($this->pdfPreview) === 0 || count($this->pdfPreview) > 300 || $this->pdfUnrecognized) {
+        $previewKey = 'reconciliation_pdf_preview_'.auth()->id().'_'.$batch->id;
+        $verifiedEntries = session()->get($previewKey, []);
+        if (count($verifiedEntries) === 0 || count($verifiedEntries) > 300 || $this->pdfUnrecognized) {
             $this->addError('bankPdf','Tidak ada preview valid untuk disimpan.');
             return;
         }
         // Validate preview data supplied by the Livewire client before committing.
-        foreach ($this->pdfPreview as $row) {
+        foreach ($verifiedEntries as $row) {
             if (!is_array($row) ||
                 !isset($row['posted_at'],$row['description'],$row['reference'],$row['direction'],$row['amount']) ||
                 !in_array($row['direction'], ['in','out'], true) ||
@@ -135,7 +141,8 @@ class Index extends Component
             }
         }
         try {
-            $total = $importer->replace($batch,'bank',$this->pdfPreview);
+            $total = $importer->replace($batch,'bank',$verifiedEntries);
+            session()->forget($previewKey);
             $this->reset('bankPdf','pdfPreview','pdfUnrecognized');
             session()->flash('success',"$total transaksi PDF disimpan. Lanjutkan auto matching dan review.");
         } catch (\Illuminate\Validation\ValidationException $exception) {
