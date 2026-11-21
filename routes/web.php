@@ -53,6 +53,7 @@ Route::middleware([Authenticate::class])->group(function () {
     Route::get('/buku-besar', App\Livewire\Ledger\Index::class)->name('ledger.index');
     Route::get('/reconciliation', ReconciliationIndex::class)->name('reconciliation.index');
     Route::get('/finance-ai', FinanceAiIndex::class)->name('finance-ai.index');
+    Route::get('/finance-ai/reports/{report}', [\App\Http\Controllers\FinanceAiReportController::class, 'show'])->name('finance-ai.report');
     Route::get('/buku-kas', CashBookIndex::class)
     ->name('cash-book');
     Route::get('/internal-operational-costs', InternalOperationalCostIndex::class)
