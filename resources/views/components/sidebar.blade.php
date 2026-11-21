@@ -112,6 +112,12 @@
             <span>Buku Kas</span>
         </a>
 
+        <a href="{{ route('finance-ai.index') }}" @click="sidebarOpen = false"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-white {{ request()->routeIs('finance-ai.*') ? 'bg-emerald-500 text-white' : '' }}">
+            <x-heroicon-o-sparkles class="w-6 h-6 text-emerald-600" />
+            <span>Finance AI</span>
+        </a>
+
         <a href="{{ route('reconciliation.index') }}" @click="sidebarOpen = false"
             class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-white {{ request()->routeIs('reconciliation.*') ? 'bg-emerald-500 text-white' : '' }}">
             <x-heroicon-o-arrows-right-left class="w-6 h-6 text-emerald-600" />
