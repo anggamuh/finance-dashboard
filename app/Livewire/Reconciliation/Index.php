@@ -92,6 +92,8 @@ class Index extends Component
                             $v = str_replace(',', '.', $v);
                         } elseif (str_contains($v, ',')) {
                             $v = str_replace(',', '.', $v);
+                        } elseif (preg_match('/^\d{1,3}(\.\d{3})+$/', $v)) {
+                            $v = str_replace('.', '', $v);
                         }
                         if (!is_numeric($v)) throw new \InvalidArgumentException('Nominal tidak valid');
                         return round((float) $v, 2);
