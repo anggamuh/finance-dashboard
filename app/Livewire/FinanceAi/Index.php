@@ -11,6 +11,8 @@ class Index extends Component
     public string $month = '';
     public string $question = '';
     public array $messages = [];
+    public ?string $selectedAccount = null;
+    public int $accountPage = 1;
 
     public function mount(): void
     {
@@ -58,6 +60,39 @@ class Index extends Component
         $this->messages = array_slice($this->messages, -12);
     }
 
+    public function updatedMonth(): void
+    {
+        // History must never silently mix data for different accounting months.
+        $this->clearChat();
+        $this->selectedAccount = null;
+        $this->accountPage = 1;
+    }
+
+    public function showAccount(string $code): void
+    {
+        if (!preg_match('/^[0-9A-Za-z._-]{1,30}$/D', $code)) {
+            return;
+        }
+        $this->selectedAccount = $code;
+        $this->accountPage = 1;
+    }
+
+    public function closeAccount(): void
+    {
+        $this->selectedAccount = null;
+        $this->accountPage = 1;
+    }
+
+    public function nextAccountPage(): void
+    {
+        $this->accountPage = min(100, $this->accountPage + 1);
+    }
+
+    public function previousAccountPage(): void
+    {
+        $this->accountPage = max(1, $this->accountPage - 1);
+    }
+
     public function quickQuestion(string $type): void
     {
         $this->question = match ($type) {
@@ -65,6 +100,7 @@ class Index extends Component
             'accounts' => 'Apa tiga akun beban operasional terbesar dan nominalnya?',
             'reconciliation' => 'Bagaimana status rekonsiliasi bank di bulan ini?',
             'revenue' => 'Berapa total omzet yang tercatat pada periode ini, dan apa keterbatasan datanya?',
+            'why' => 'Berdasarkan data akun dan perbandingan bulan ini, faktor tercatat apa yang menjelaskan perubahan beban? Jika belum cukup data, jelaskan keterbatasannya.',
             default => '',
         };
     }
@@ -75,8 +111,30 @@ class Index extends Component
         $this->resetErrorBag();
     }
 
-    public function render()
+    public function render(FinanceAiContext $context)
     {
-        return view('livewire.finance-ai.index')->layout('layouts.app');
+        // The dashboard is server-calculated, not model-generated.
+        $dashboard = $context->dashboard($this->month);
+        $accountTransactions = null;
+        $accountName = null;
+        if ($this->selectedAccount !== null) {
+            // Only expense-class rows from the selected period can be drilled into.
+            $from = $this->month.'-01';
+            $end = \Illuminate\Support\Carbon::parse($from)->endOfMonth()->toDateString();
+            $matched = collect($dashboard['accounts'])->firstWhere('code', $this->selectedAccount);
+            if ($matched) {
+                $accountName = $matched['name'];
+                $accountTransactions = $context->expenseQuery($from, $end)
+                    ->where('account_code', $this->selectedAccount)
+                    ->orderByDesc('transaction_date')
+                    ->orderByDesc('id')
+                    ->paginate(12, ['id','transaction_date','description','debit','account_name'], 'accountPage', $this->accountPage);
+            } else {
+                $this->selectedAccount = null;
+            }
+        }
+
+        return view('livewire.finance-ai.index', compact('dashboard','accountTransactions','accountName'))
+            ->layout('layouts.app');
     }
 }
