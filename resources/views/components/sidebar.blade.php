@@ -42,6 +42,12 @@
             <span>Kas &amp; Bank</span>
         </a>
 
+        <a href="{{ route('reports.bank-ledger') }}" @click="sidebarOpen = false"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl transition text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('reports.bank-ledger') ? 'bg-emerald-500 text-white' : '' }}">
+            <x-heroicon-o-document-chart-bar class="h-6 w-6 text-emerald-600" />
+            <span>Laporan Kas &amp; Bank</span>
+        </a>
+
         {{-- Dashboard --}}
         <a href="{{ route('dashboard') }}" @click="sidebarOpen = false"
             class="flex items-center gap-3 px-4 py-3 rounded-xl transition text-gray-700 dark:text-white

@@ -7,6 +7,7 @@ use App\Livewire\Closing\Index as ClosingIndex;
 use App\Livewire\Dashboard\Index;
 use App\Livewire\InternalOperationalCosts\Index as InternalOperationalCostIndex;
 use App\Livewire\Reports\OperatingExpense;
+use App\Livewire\Reports\BankLedgerReport;
 use App\Livewire\Reports\OperatingExpenseDetail;
 use App\Livewire\Revenues\Index as RevenueIndex;
 use App\Livewire\TestUpload;
@@ -55,6 +56,7 @@ Route::middleware([Authenticate::class])->group(function () {
     Route::get('/reconciliation', ReconciliationIndex::class)->name('reconciliation.index');
     Route::get('/finance-ai', FinanceAiIndex::class)->name('finance-ai.index');
     Route::get('/finance-ai/reports/{report}', [\App\Http\Controllers\FinanceAiReportController::class, 'show'])->name('finance-ai.report');
+    Route::get('/reports/kas-bank', BankLedgerReport::class)->name('reports.bank-ledger');
     Route::get('/kas-bank', BankLedgerIndex::class)->name('bank-ledger.index');
     Route::get('/buku-kas', CashBookIndex::class)
     ->name('cash-book');

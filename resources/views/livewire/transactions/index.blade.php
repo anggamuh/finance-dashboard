@@ -1,5 +1,38 @@
 <div class="space-y-6">
 
+    <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 class="font-semibold text-emerald-900 dark:text-emerald-200">Transaksi dari Import Kas &amp; Bank</h2>
+                <p class="text-sm text-emerald-800 dark:text-emerald-300">Transaksi BCA, Mandiri, dan Kas dari Excel atau input langsung; filter tanggal dan pencarian di bawah juga berlaku di sini.</p></div>
+            <div class="flex gap-2">
+                <a class="rounded-lg border border-emerald-600 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-200" href="{{ route('bank-ledger.index') }}">Kelola transaksi</a>
+                <a class="rounded-lg bg-emerald-600 px-3 py-2 text-sm text-white" href="{{ route('reports.bank-ledger') }}">Buka laporan</a>
+            </div>
+        </div>
+    </div>
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow dark:border-slate-700 dark:bg-slate-800">
+        <div class="border-b border-slate-100 p-4 dark:border-slate-700"><h3 class="font-semibold text-slate-800 dark:text-white">Daftar Kas &amp; Bank</h3>
+            <p class="text-xs text-slate-500">Menampilkan maksimal 100 transaksi terbaru sesuai filter. Semua transaksi tersedia di laporan.</p></div>
+        <div class="overflow-x-auto">
+            <table class="min-w-[950px] w-full text-left text-sm"><thead class="bg-slate-50 text-slate-700 dark:bg-slate-700 dark:text-white">
+                <tr>@foreach(['Tanggal','Rekening','No. Bukti','DBACC','Akun','Uraian','Debit / Masuk','Kredit / Keluar'] as $heading)<th class="px-3 py-2">{{ $heading }}</th>@endforeach</tr>
+            </thead><tbody>
+                @forelse($bankEntries as $row)
+                    <tr class="border-t border-slate-100 dark:border-slate-700">
+                        <td class="px-3 py-2">{{ $row->entry_date->format('d/m/Y') }}</td>
+                        <td class="px-3 py-2">{{ $row->ledger }}</td>
+                        <td class="px-3 py-2">{{ $row->document_number }}</td>
+                        <td class="px-3 py-2">{{ $row->account_code }}</td>
+                        <td class="px-3 py-2">{{ $row->account_name }}</td>
+                        <td class="px-3 py-2">{{ $row->description }}</td>
+                        <td class="px-3 py-2 text-right">{{ number_format((float)$row->debit,2,',','.') }}</td>
+                        <td class="px-3 py-2 text-right">{{ number_format((float)$row->credit,2,',','.') }}</td>
+                    </tr>
+                @empty <tr><td colspan="8" class="p-6 text-center text-slate-500">Belum ada transaksi Kas-Bank untuk filter ini.</td></tr> @endforelse
+            </tbody></table>
+        </div>
+    </div>
+
     {{-- ============================================================
         HEADER
         ============================================================ --}}
