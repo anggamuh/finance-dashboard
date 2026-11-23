@@ -16,6 +16,7 @@ use App\Livewire\Transactions\Edit as EditTransaction;
 use App\Livewire\Transactions\Index as TransactionIndex;
 use App\Livewire\Upload\Index as UploadIndex;
 use App\Livewire\CashBook\Index as CashBookIndex;
+use App\Livewire\BankLedger\Index as BankLedgerIndex;
 use App\Livewire\Reconciliation\Index as ReconciliationIndex;
 use App\Livewire\FinanceAi\Index as FinanceAiIndex;
 use Illuminate\Auth\Middleware\Authenticate;
@@ -54,6 +55,7 @@ Route::middleware([Authenticate::class])->group(function () {
     Route::get('/reconciliation', ReconciliationIndex::class)->name('reconciliation.index');
     Route::get('/finance-ai', FinanceAiIndex::class)->name('finance-ai.index');
     Route::get('/finance-ai/reports/{report}', [\App\Http\Controllers\FinanceAiReportController::class, 'show'])->name('finance-ai.report');
+    Route::get('/kas-bank', BankLedgerIndex::class)->name('bank-ledger.index');
     Route::get('/buku-kas', CashBookIndex::class)
     ->name('cash-book');
     Route::get('/internal-operational-costs', InternalOperationalCostIndex::class)

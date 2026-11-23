@@ -36,6 +36,12 @@
         x-transition:leave-end="opacity-0"
         class="sidebar-scroll flex-1 overflow-y-auto px-3 py-4 space-y-1">
 
+        <a href="{{ route('bank-ledger.index') }}" @click="sidebarOpen = false"
+           class="flex items-center gap-3 px-4 py-3 rounded-xl transition text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('bank-ledger.*') ? 'bg-emerald-500 text-white' : '' }}">
+            <x-heroicon-o-building-library class="h-6 w-6 text-emerald-600" />
+            <span>Kas &amp; Bank</span>
+        </a>
+
         {{-- Dashboard --}}
         <a href="{{ route('dashboard') }}" @click="sidebarOpen = false"
             class="flex items-center gap-3 px-4 py-3 rounded-xl transition text-gray-700 dark:text-white
