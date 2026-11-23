@@ -29,6 +29,22 @@
             <div class="mt-3 flex gap-2"><button wire:click="previewImport" wire:loading.attr="disabled" class="rounded-lg border px-4 py-2 text-sm">Preview</button>
                 @if($preview)<button wire:click="import" wire:loading.attr="disabled" wire:confirm="Import transaksi dari ketiga sheet?" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm text-white">Konfirmasi import</button>@endif
             </div>
+            <div class="mt-5 border-t border-slate-200 pt-4 dark:border-slate-700">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-semibold">Hapus hasil import periode ini</p>
+                        <p class="text-xs text-slate-500">Hanya data Excel {{ $ledger }} bulan {{ str_pad($month, 2, '0', STR_PAD_LEFT) }}/{{ $year }} ({{ $importedCount }} transaksi). Input manual dan rekening/bulan lain tidak terhapus.</p>
+                    </div>
+                    <button type="button"
+                        wire:click="deleteImportedPeriod"
+                        wire:confirm="HAPUS {{ $importedCount }} transaksi hasil import Excel dari {{ $ledger }} bulan {{ $month }}/{{ $year }}? Data yang dihapus tidak bisa dikembalikan. Transaksi manual tetap aman."
+                        wire:loading.attr="disabled"
+                        @disabled($importedCount === 0)
+                        class="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+                        Hapus Import ({{ $importedCount }})
+                    </button>
+                </div>
+            </div>
             <div wire:loading wire:target="previewImport,import" class="mt-2 text-sm">Memproses Excel...</div>
             @if($preview)<div class="mt-3 rounded-lg bg-slate-100 p-3 text-sm dark:bg-slate-700">Dibaca: {{ $preview['total'] }} transaksi. Dilewati: {{ $preview['skipped'] }} baris.<br>
                 @foreach($preview['by_ledger'] as $name=>$count) {{ $name }}: {{ $count }} &nbsp; @endforeach
