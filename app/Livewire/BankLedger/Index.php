@@ -85,6 +85,31 @@ class Index extends Component
         session()->flash('success', "Import selesai: {$result['inserted']} baru, {$result['duplicates']} dilewati (identik), {$result['skipped']} baris kosong/tidak valid.");
     }
 
+    /**
+     * Delete only Excel-imported entries for the selected account and month.
+     * Manual entries and entries for other periods or ledgers are untouched.
+     */
+    public function deleteImportedPeriod(): void
+    {
+        $this->validate([
+            'ledger' => ['required', Rule::in(['KAS', 'BCA', 'MANDIRI'])],
+            'month' => 'required|integer|between:1,12',
+            'year' => 'required|integer|between:2000,2100',
+        ]);
+
+        $deleted = DB::transaction(function () {
+            return BankEntry::query()
+                ->where('source', 'excel')
+                ->where('ledger', $this->ledger)
+                ->whereYear('entry_date', $this->year)
+                ->whereMonth('entry_date', $this->month)
+                ->delete();
+        });
+
+        $this->reset('preview');
+        session()->flash('success', "{$deleted} transaksi hasil import {$this->ledger} periode {$this->month}/{$this->year} berhasil dihapus. Transaksi manual tetap aman.");
+    }
+
     public function edit(int $id): void
     {
         $row = BankEntry::findOrFail($id);
@@ -188,8 +213,16 @@ class Index extends Component
                 $row->document_number.' '.$row->account_code.' '.$row->account_name.' '.$row->invoice.' '.$row->description
             ), $keyword));
         }
+        $importedCount = BankEntry::query()
+            ->where('source', 'excel')
+            ->where('ledger', $this->ledger)
+            ->whereYear('entry_date', $this->year)
+            ->whereMonth('entry_date', $this->month)
+            ->count();
+
         return view('livewire.bank-ledger.index', [
             'rows' => $entries,
+            'importedCount' => $importedCount,
             'totalDebit' => $all->sum('debit'),
             'totalCredit' => $all->sum('credit'),
             'ending' => $balance,
