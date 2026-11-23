@@ -3,6 +3,7 @@
 namespace App\Livewire\Transactions;
 
 use App\Models\Transaction;
+use App\Models\BankEntry;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -1450,11 +1451,27 @@ class Index extends Component
             )
             ->get();
 
+        // Kas-Bank uses a separate chart of accounts and debit/credit convention.
+        // Display its entries here without mutating Accurate transactions or expense reports.
+        $bankEntries = BankEntry::query()
+            ->when($this->dateFrom, fn ($q) => $q->whereDate('entry_date', '>=', $this->dateFrom))
+            ->when($this->dateTo, fn ($q) => $q->whereDate('entry_date', '<=', $this->dateTo))
+            ->when($this->search, function ($q) {
+                $term = '%'.$this->search.'%';
+                $q->where(fn ($w) => $w->where('description', 'like', $term)
+                    ->orWhere('document_number', 'like', $term)
+                    ->orWhere('account_name', 'like', $term)
+                    ->orWhere('account_code', 'like', $term)
+                    ->orWhere('invoice', 'like', $term));
+            })
+            ->orderByDesc('entry_date')->orderByDesc('id')->limit(100)->get();
+
         return view(
             'livewire.transactions.index',
             compact(
                 'transactions',
-                'accounts'
+                'accounts',
+                'bankEntries'
             )
         )->layout(
             'layouts.app'
