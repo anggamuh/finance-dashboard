@@ -20,8 +20,10 @@ class BankTransactionSync
             'bank_entry_id' => $entry->id,
             'transaction_date' => $entry->entry_date,
             'transaction_number' => $entry->document_number,
-            'account_code' => $entry->account_code,
-            'account_name' => $entry->account_name,
+            // Keep the original nullable DBACC on bank_entries; the legacy
+            // transactions table requires a non-null account code.
+            'account_code' => filled($entry->account_code) ? trim((string) $entry->account_code) : 'BANK-UNMAPPED',
+            'account_name' => filled($entry->account_name) ? $entry->account_name : 'Akun Kas-Bank Belum Dipetakan',
             'description' => $entry->description,
             'payment_method' => match ($entry->ledger) {
                 'BCA' => 'Bank BCA',
