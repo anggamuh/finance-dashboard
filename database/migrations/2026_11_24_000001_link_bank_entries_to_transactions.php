@@ -9,9 +9,13 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('transactions', function (Blueprint $table) {
-            $table->foreignId('bank_entry_id')->nullable()->unique();
-        });
+        // MySQL DDL is not rolled back with a failed migration. On retry,
+        // the column can exist even if this migration was not recorded.
+        if (! Schema::hasColumn('transactions', 'bank_entry_id')) {
+            Schema::table('transactions', function (Blueprint $table) {
+                $table->foreignId('bank_entry_id')->nullable()->unique();
+            });
+        }
 
         // Make imports performed before this upgrade visible in the existing Transactions menu.
         BankEntry::query()->orderBy('id')->chunkById(250, function ($entries) {
@@ -26,9 +30,11 @@ return new class extends Migration {
     {
         // Remove only linked copies; the original Kas/Bank records remain intact.
         \App\Models\Transaction::withTrashed()->whereNotNull('bank_entry_id')->forceDelete();
-        Schema::table('transactions', function (Blueprint $table) {
-            $table->dropUnique(['bank_entry_id']);
-            $table->dropColumn('bank_entry_id');
-        });
+        if (Schema::hasColumn('transactions', 'bank_entry_id')) {
+            Schema::table('transactions', function (Blueprint $table) {
+                $table->dropUnique(['bank_entry_id']);
+                $table->dropColumn('bank_entry_id');
+            });
+        }
     }
 };
