@@ -122,12 +122,9 @@ class Index extends Component
                   ->orWhereRaw('SUBSTR(account_code, 1, 4) IN ('.implode(',', array_fill(0, count($this->coaCodes), '?')).')', $this->coaCodes);
             })
             ->where(function ($q) {
-                $q->whereNull('description')
-                    ->orWhere(
-                        'description',
-                        'not like',
-                        'Saldo per%'
-                    );
+                $q->whereNotNull('bank_entry_id')
+                    ->orWhereNull('description')
+                    ->orWhere('description', 'not like', 'Saldo per%');
             })
             ->when(
                 $this->search,
