@@ -1,4 +1,23 @@
-<div class="space-y-6">
+<div class="space-y-6" x-data="{ activeView: 'neraca' }">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Neraca &amp; Transaksi</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Posisi saldo dan riwayat transaksi dalam satu halaman.</p>
+        </div>
+        <div class="inline-flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-800">
+            <button type="button" @click="activeView='neraca'"
+                :class="activeView==='neraca' ? 'bg-emerald-600 text-white' : 'text-slate-600 dark:text-slate-300'"
+                class="rounded-lg px-4 py-2 text-sm font-semibold">Neraca</button>
+            <button type="button" @click="activeView='transaksi'"
+                :class="activeView==='transaksi' ? 'bg-emerald-600 text-white' : 'text-slate-600 dark:text-slate-300'"
+                class="rounded-lg px-4 py-2 text-sm font-semibold">Riwayat Transaksi</button>
+        </div>
+    </div>
+    <section x-show="activeView==='neraca'">
+        @livewire('transactions.neraca')
+    </section>
+    <section x-show="activeView==='transaksi'" x-cloak>
+
 
     {{-- ============================================================
         HEADER
@@ -1142,4 +1161,5 @@
 
     @endpush
 
+    </section>
 </div>
