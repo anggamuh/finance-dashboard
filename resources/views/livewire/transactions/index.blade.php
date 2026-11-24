@@ -379,7 +379,7 @@
 
                                         {{-- EDIT --}}
                                         <a
-                                            href="{{ $trx->bank_entry_id ? route('bank-ledger.index') : route('transactions.edit', $trx->id) }}"
+                                            href="{{ $trx->bank_entry_id ? route('bank-ledger.index', ['edit' => $trx->bank_entry_id]) : route('transactions.edit', $trx->id) }}"
                                             aria-label="Edit transaksi"
                                             class="inline-flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition">
 
