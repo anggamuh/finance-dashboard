@@ -61,7 +61,7 @@ class Index extends Component
                 '5399',
             ];
 
-            $operasional = Transaction::query()
+            $operasional = Transaction::query()->whereNull('bank_entry_id')
                 ->whereNotIn('account_name', [
                     'Bank BCA',
                     'Petty Cash',
