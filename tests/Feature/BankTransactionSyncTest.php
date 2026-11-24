@@ -44,6 +44,32 @@ class BankTransactionSyncTest extends TestCase
         $this->assertDatabaseCount('transactions', 1);
     }
 
+    public function test_missing_dbacc_is_preserved_in_bank_source_and_does_not_break_transaction_sync(): void
+    {
+        $data = [
+            'ledger' => 'MANDIRI',
+            'entry_date' => '2026-11-01',
+            'document_number' => 'M26M-001',
+            'account_code' => null,
+            'account_name' => 'PENDAPATAN BUNGA',
+            'description' => 'MANDIRI',
+            'debit' => 71805.87,
+            'credit' => 0,
+            'source' => 'excel',
+        ];
+        $entry = BankEntry::create($data + [
+            'fingerprint' => BankEntry::fingerprintFor($data),
+        ]);
+
+        $transaction = app(BankTransactionSync::class)->sync($entry);
+
+        $this->assertSame('BANK-UNMAPPED', $transaction->account_code);
+        $this->assertSame('PENDAPATAN BUNGA', $transaction->account_name);
+        $this->assertEquals(71805.87, $transaction->credit);
+        $this->assertNull($entry->fresh()->account_code);
+        $this->assertDatabaseCount('transactions', 1);
+    }
+
     public function test_same_document_number_in_another_month_keeps_separate_transactions(): void
     {
         $first = $this->createEntry('MANDIRI', '2026-09-07', 'M26K-010');
