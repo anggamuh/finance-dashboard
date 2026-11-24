@@ -70,6 +70,30 @@ class BankTransactionSyncTest extends TestCase
         $this->assertDatabaseCount('transactions', 1);
     }
 
+    public function test_penerimaan_excel_debit_is_income_in_existing_transactions(): void
+    {
+        $data = [
+            'ledger' => 'BCA',
+            'entry_date' => '2026-10-19',
+            'document_number' => 'B26M-001',
+            'account_code' => '113',
+            'account_name' => 'POS SILANG',
+            'description' => 'Penerimaan dari Mandiri',
+            'debit' => 41000000,
+            'credit' => 0,
+            'source' => 'excel',
+        ];
+        $entry = BankEntry::create($data + [
+            'fingerprint' => BankEntry::fingerprintFor($data),
+        ]);
+
+        $mirrored = app(BankTransactionSync::class)->sync($entry);
+        $this->assertSame('income', $mirrored->transaction_type);
+        $this->assertEquals(41000000, $mirrored->credit);
+        $this->assertEquals(0, $mirrored->debit);
+        // Transfer received is money-in for this bank, not necessarily sales revenue.
+    }
+
     public function test_same_document_number_in_another_month_keeps_separate_transactions(): void
     {
         $first = $this->createEntry('MANDIRI', '2026-09-07', 'M26K-010');
