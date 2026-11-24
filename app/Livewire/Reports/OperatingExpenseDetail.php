@@ -33,7 +33,7 @@ class OperatingExpenseDetail extends Component
         ];
 
         // Get parent totals (same way as working OperatingExpense)
-        $parentTotals = Transaction::query()
+        $parentTotals = Transaction::query()->whereNull('bank_entry_id')
             ->whereNotIn('account_name', [
                 'Bank BCA',
                 'Petty Cash',
@@ -70,7 +70,7 @@ class OperatingExpenseDetail extends Component
         $grandTotal = 0;
 
         foreach ($parentTotals as $parent) {
-            $children = Transaction::query()
+            $children = Transaction::query()->whereNull('bank_entry_id')
                 ->whereNotIn('account_name', [
                     'Bank BCA',
                     'Petty Cash',
