@@ -4,6 +4,7 @@ namespace App\Livewire\Transactions;
 
 use App\Models\Transaction;
 use App\Models\BankEntry;
+use App\Services\BankTransactionSync;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -116,19 +117,10 @@ class Index extends Component
         }
 
         return $query
-            ->whereRaw(
-                'SUBSTR(account_code, 1, 4) IN ('.
-                implode(
-                    ',',
-                    array_fill(
-                        0,
-                        count($this->coaCodes),
-                        '?'
-                    )
-                ).
-                ')',
-                $this->coaCodes
-            )
+            ->where(function ($q) {
+                $q->whereNotNull('bank_entry_id')
+                  ->orWhereRaw('SUBSTR(account_code, 1, 4) IN ('.implode(',', array_fill(0, count($this->coaCodes), '?')).')', $this->coaCodes);
+            })
             ->where(function ($q) {
                 $q->whereNull('description')
                     ->orWhere(
@@ -310,7 +302,12 @@ class Index extends Component
             return;
         }
 
-        $transaction->delete();
+        if ($transaction->bank_entry_id) {
+            app(BankTransactionSync::class)->delete(BankEntry::findOrFail($transaction->bank_entry_id));
+        } else {
+            $transaction->delete();
+        }
+
 
         /*
          * Kalau transaksi yang dihapus sedang terpilih,
@@ -341,10 +338,15 @@ class Index extends Component
             return;
         }
 
-        Transaction::whereIn(
-            'id',
-            $this->selected
-        )->delete();
+        // Use the same deletion path so linked bank records never become orphaned.
+        $linked = Transaction::whereIn('id', $this->selected)->whereNotNull('bank_entry_id')->pluck('bank_entry_id');
+        $sync = app(BankTransactionSync::class);
+        foreach ($linked as $id) {
+            if ($entry = BankEntry::find($id)) {
+                $sync->delete($entry);
+            }
+        }
+        Transaction::whereIn('id', $this->selected)->delete();
 
         $this->selected = [];
 
@@ -362,9 +364,12 @@ class Index extends Component
 
     public function restore($id)
     {
-        Transaction::onlyTrashed()
-            ->findOrFail($id)
-            ->restore();
+        $row = Transaction::onlyTrashed()->findOrFail($id);
+        if ($row->bank_entry_id) {
+            session()->flash('error', 'Transaksi Kas-Bank yang dihapus perlu diimport ulang lewat Kas & Bank.');
+            return;
+        }
+        $row->restore();
 
         session()->flash(
             'success',
@@ -383,10 +388,8 @@ class Index extends Component
         }
 
         Transaction::onlyTrashed()
-            ->whereIn(
-                'id',
-                $this->selected
-            )
+            ->whereIn('id', $this->selected)
+            ->whereNull('bank_entry_id')
             ->restore();
 
         $this->selected = [];
@@ -1451,27 +1454,11 @@ class Index extends Component
             )
             ->get();
 
-        // Kas-Bank uses a separate chart of accounts and debit/credit convention.
-        // Display its entries here without mutating Accurate transactions or expense reports.
-        $bankEntries = BankEntry::query()
-            ->when($this->dateFrom, fn ($q) => $q->whereDate('entry_date', '>=', $this->dateFrom))
-            ->when($this->dateTo, fn ($q) => $q->whereDate('entry_date', '<=', $this->dateTo))
-            ->when($this->search, function ($q) {
-                $term = '%'.$this->search.'%';
-                $q->where(fn ($w) => $w->where('description', 'like', $term)
-                    ->orWhere('document_number', 'like', $term)
-                    ->orWhere('account_name', 'like', $term)
-                    ->orWhere('account_code', 'like', $term)
-                    ->orWhere('invoice', 'like', $term));
-            })
-            ->orderByDesc('entry_date')->orderByDesc('id')->limit(100)->get();
-
         return view(
             'livewire.transactions.index',
             compact(
                 'transactions',
-                'accounts',
-                'bankEntries'
+                'accounts'
             )
         )->layout(
             'layouts.app'
