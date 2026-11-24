@@ -32,8 +32,44 @@ class TransactionsNeracaTest extends TestCase
             BankEntry::create($data + ['fingerprint' => BankEntry::fingerprintFor($data)]);
         }
 
-        Livewire::test(Neraca::class)->set('asOf', '2026-11-10')
+        Livewire::test(Neraca::class)
+            ->set('asOf', '2026-11-10')
+            ->assertSee('GABUNGAN')
+            ->assertSee('121')
             ->assertSee('130.000,00')
-            ->assertDontSee('1.030.000,00');
+            ->assertSee('BCA-IN')
+            ->assertDontSee('NEXT')
+            ->set('ledger', 'MANDIRI')
+            ->assertDontSee('BCA-IN');
+    }
+
+    public function test_excel_sheet_ledger_codes_and_independent_balances(): void
+    {
+        foreach ([
+            ['KAS', '2026-11-01', 'KAS-001', 500000, 0],
+            ['BCA', '2026-11-01', 'BCA-001', 75000, 0],
+            ['MANDIRI', '2026-11-01', 'MANDIRI-001', 0, 20000],
+        ] as [$ledger, $date, $number, $debit, $credit]) {
+            $data = [
+                'ledger' => $ledger,
+                'entry_date' => $date,
+                'document_number' => $number,
+                'description' => $number,
+                'debit' => $debit,
+                'credit' => $credit,
+                'source' => 'excel',
+            ];
+            BankEntry::create($data + ['fingerprint' => BankEntry::fingerprintFor($data)]);
+        }
+
+        Livewire::test(Neraca::class)->set('asOf', '2026-11-10')
+            ->assertSee('111')->assertSee('121')->assertSee('122')
+            ->assertSee('KAS-001')->assertSee('BCA-001')->assertSee('MANDIRI-001')
+            ->assertSee('500.000,00')->assertSee('75.000,00')
+            ->assertSee('-20.000,00')
+            ->set('ledger', 'KAS')
+            ->assertSee('KAS-001')
+            ->assertDontSee('BCA-001')
+            ->assertDontSee('MANDIRI-001');
     }
 }
