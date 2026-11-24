@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BankEntry;
+use App\Services\BankTransactionSync;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -78,12 +79,18 @@ class BankWorkbookImporter
         $inserted = 0;
         $duplicates = 0;
         DB::transaction(function () use ($parsed, &$inserted, &$duplicates) {
+            $sync = app(BankTransactionSync::class);
             foreach ($parsed['rows'] as $row) {
                 $created = BankEntry::query()->insertOrIgnore(array_merge(
                     $row, ['created_at' => now(), 'updated_at' => now()]
                 ));
                 $inserted += $created;
                 $duplicates += 1 - $created;
+                // Older entries and new rows both stay linked to the Transactions table.
+                $entry = BankEntry::query()->where('fingerprint', $row['fingerprint'])->first();
+                if ($entry) {
+                    $sync->sync($entry);
+                }
             }
         });
 

@@ -31,7 +31,7 @@ class OperatingExpense extends Component
             '5399' => 'Beban Usaha Lainnya',
         ];
 
-        $expenses = Transaction::query()
+        $expenses = Transaction::query()->whereNull('bank_entry_id')
 
             // Hilangkan akun kas
             ->whereNotIn('account_name', [

@@ -4,6 +4,7 @@ namespace App\Livewire\BankLedger;
 
 use App\Models\BankEntry;
 use App\Services\BankWorkbookImporter;
+use App\Services\BankTransactionSync;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -37,6 +38,16 @@ class Index extends Component
         $this->year = now()->year;
         $this->entry_date = now()->toDateString();
         $this->loadOpening();
+        if (request()->filled('edit') && ctype_digit((string) request()->query('edit'))) {
+            $entry = BankEntry::find((int) request()->query('edit'));
+            if ($entry) {
+                $this->ledger = $entry->ledger;
+                $this->month = (int) $entry->entry_date->month;
+                $this->year = (int) $entry->entry_date->year;
+                $this->loadOpening();
+                $this->edit($entry->id);
+            }
+        }
     }
 
     public function updatedLedger(): void { $this->loadOpening(); }
@@ -89,7 +100,7 @@ class Index extends Component
      * Delete only Excel-imported entries for the selected account and month.
      * Manual entries and entries for other periods or ledgers are untouched.
      */
-    public function deleteImportedPeriod(): void
+    public function deleteImportedPeriod(BankTransactionSync $sync): void
     {
         $this->validate([
             'ledger' => ['required', Rule::in(['KAS', 'BCA', 'MANDIRI'])],
@@ -97,14 +108,7 @@ class Index extends Component
             'year' => 'required|integer|between:2000,2100',
         ]);
 
-        $deleted = DB::transaction(function () {
-            return BankEntry::query()
-                ->where('source', 'excel')
-                ->where('ledger', $this->ledger)
-                ->whereYear('entry_date', $this->year)
-                ->whereMonth('entry_date', $this->month)
-                ->delete();
-        });
+        $deleted = $sync->deleteImportedPeriod($this->ledger, (int) $this->month, (int) $this->year);
 
         $this->reset('preview');
         session()->flash('success', "{$deleted} transaksi hasil import {$this->ledger} periode {$this->month}/{$this->year} berhasil dihapus. Transaksi manual tetap aman.");
@@ -126,7 +130,7 @@ class Index extends Component
         $this->entry_date = now()->toDateString();
     }
 
-    public function save(): void
+    public function save(BankTransactionSync $sync): void
     {
         $validated = $this->validate([
             'ledger' => ['required', Rule::in(['KAS', 'BCA', 'MANDIRI'])],
@@ -152,19 +156,21 @@ class Index extends Component
             $this->addError('document_number', 'Transaksi identik sudah tersimpan.');
             return;
         }
-        $validated['source'] = 'manual';
         if ($this->editingId) {
-            BankEntry::findOrFail($this->editingId)->update($validated);
+            $entry = BankEntry::findOrFail($this->editingId);
+            $entry->update($validated);
         } else {
-            BankEntry::create($validated);
+            $validated['source'] = 'manual';
+            $entry = BankEntry::create($validated);
         }
+        $sync->sync($entry);
         $this->resetForm();
         session()->flash('success', 'Transaksi berhasil disimpan.');
     }
 
-    public function remove(int $id): void
+    public function remove(int $id, BankTransactionSync $sync): void
     {
-        BankEntry::findOrFail($id)->delete();
+        $sync->delete(BankEntry::findOrFail($id));
         session()->flash('success', 'Transaksi dihapus.');
     }
 

@@ -21,6 +21,7 @@ class Transaction extends Model
         'debit',
         'credit',
         'import_id',
+        'bank_entry_id',
         'proof_file',
         'proof_original_name',
         'payment_method',
@@ -32,6 +33,11 @@ class Transaction extends Model
         'debit' => 'decimal:2',
         'credit' => 'decimal:2',
     ];
+
+    public function bankEntry(): BelongsTo
+    {
+        return $this->belongsTo(BankEntry::class, 'bank_entry_id');
+    }
 
     public function account(): BelongsTo
     {
