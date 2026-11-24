@@ -156,11 +156,11 @@ class Index extends Component
             $this->addError('document_number', 'Transaksi identik sudah tersimpan.');
             return;
         }
-        $validated['source'] = 'manual';
         if ($this->editingId) {
             $entry = BankEntry::findOrFail($this->editingId);
             $entry->update($validated);
         } else {
+            $validated['source'] = 'manual';
             $entry = BankEntry::create($validated);
         }
         $sync->sync($entry);
