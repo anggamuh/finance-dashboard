@@ -2,9 +2,7 @@
 
 namespace App\Livewire\Transactions;
 
-use App\Models\Account;
 use App\Models\BankEntry;
-use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -12,6 +10,10 @@ use Livewire\Component;
 class Neraca extends Component
 {
     public string $asOf;
+    public string $ledger = 'GABUNGAN';
+    public string $search = '';
+
+    private const BANK_CODES = ['KAS' => '111', 'BCA' => '121', 'MANDIRI' => '122'];
 
     public function mount(): void
     {
@@ -20,80 +22,86 @@ class Neraca extends Component
 
     public function render()
     {
-        $asOf = $this->asOf;
-        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
-            $asOf = now()->toDateString();
-        }
         try {
-            $date = Carbon::parse($asOf);
+            $date = Carbon::createFromFormat('!Y-m-d', $this->asOf);
+            if (! $date || $date->format('Y-m-d') !== $this->asOf) {
+                throw new \InvalidArgumentException('Invalid date');
+            }
         } catch (\Throwable) {
-            $date = now();
+            $date = today();
         }
 
-        // Cash/bank movements have their own convention: debit is money in.
-        // Opening balance is anchored to the selected calendar month.
-        $ledgerRows = collect(['KAS', 'BCA', 'MANDIRI'])->map(function ($ledger) use ($date) {
+        $start = $date->copy()->startOfMonth()->toDateString();
+        $end = $date->toDateString();
+        $selected = in_array($this->ledger, ['GABUNGAN', 'KAS', 'BCA', 'MANDIRI'], true)
+            ? $this->ledger : 'GABUNGAN';
+
+        // Match the original workbook: GABUNGAN is a view across 111, 121 and 122,
+        // not a fourth ledger. Always calculate SALDO independently for each ledger.
+        $all = BankEntry::query()
+            ->whereBetween('entry_date', [$start, $end])
+            ->orderBy('entry_date')
+            ->orderBy('id')
+            ->get();
+
+        $balances = [];
+        $summary = collect(['KAS', 'BCA', 'MANDIRI'])->mapWithKeys(function ($name) use ($date, &$balances) {
             $opening = (float) DB::table('bank_ledger_openings')
-                ->where('ledger', $ledger)
-                ->where('year', $date->year)
-                ->where('month', $date->month)
+                ->where('ledger', $name)->where('year', $date->year)->where('month', $date->month)
                 ->value('amount');
-            $movements = BankEntry::query()
-                ->where('ledger', $ledger)
-                ->whereBetween('entry_date', [$date->copy()->startOfMonth()->toDateString(), $date->toDateString()])
-                ->selectRaw('COUNT(*) as count, COALESCE(SUM(debit), 0) as money_in, COALESCE(SUM(credit), 0) as money_out')
-                ->first();
+            $balances[$name] = $opening;
+            return [$name => ['code' => self::BANK_CODES[$name], 'opening' => $opening,
+                'debit' => 0.0, 'credit' => 0.0, 'ending' => $opening, 'count' => 0]];
+        })->all();
 
-            return (object) [
+        $rows = $all->map(function ($row) use (&$balances, &$summary) {
+            if (! array_key_exists($row->ledger, self::BANK_CODES)) {
+                return null;
+            }
+            $ledger = $row->ledger;
+            $debit = (float) $row->debit;
+            $credit = (float) $row->credit;
+            $balances[$ledger] += $debit - $credit;
+            $summary[$ledger]['debit'] += $debit;
+            $summary[$ledger]['credit'] += $credit;
+            $summary[$ledger]['ending'] = $balances[$ledger];
+            $summary[$ledger]['count']++;
+            return [
+                'id' => $row->id,
+                'bank_code' => self::BANK_CODES[$ledger],
                 'ledger' => $ledger,
-                'opening' => $opening,
-                'money_in' => (float) $movements->money_in,
-                'money_out' => (float) $movements->money_out,
-                'count' => (int) $movements->count,
-                'ending' => $opening + (float) $movements->money_in - (float) $movements->money_out,
+                'account_code' => $row->account_code,
+                'account_name' => $row->account_name,
+                'date' => $row->entry_date->format('d/m/Y'),
+                'invoice' => $row->invoice,
+                'document_number' => $row->document_number,
+                'channel' => $row->payment_channel,
+                'cheque_number' => $row->cheque_number,
+                'description' => $row->description,
+                'debit' => $debit,
+                'credit' => $credit,
+                'balance' => $balances[$ledger],
             ];
-        });
+        })->filter();
 
-        // Existing Accurate transactions are single-side expense/income records,
-        // not a balanced general journal. Show their COA breakdown separately.
-        // Do not add these balances to the bank balances: that can double count.
-        $coa = Account::query()
-            ->whereIn('type', ['asset', 'liability', 'equity'])
-            ->orderBy('type')
-            ->orderBy('code')
-            ->get()
-            ->groupBy('type');
-
-        $legacyAmounts = Transaction::query()
-            ->whereNull('bank_entry_id')
-            ->whereDate('transaction_date', '<=', $date->toDateString())
-            ->selectRaw('account_code, COALESCE(SUM(debit),0) AS debit_total, COALESCE(SUM(credit),0) AS credit_total')
-            ->groupBy('account_code')
-            ->get()
-            ->keyBy('account_code');
-
-        $accountGroups = collect(['asset' => 'Aset', 'liability' => 'Kewajiban', 'equity' => 'Ekuitas'])
-            ->map(function ($label, $type) use ($coa, $legacyAmounts) {
-                return [
-                    'label' => $label,
-                    'rows' => ($coa->get($type) ?? collect())->map(function ($account) use ($legacyAmounts, $type) {
-                        $totals = $legacyAmounts->get($account->code);
-                        $debit = (float) ($totals?->debit_total ?? 0);
-                        $credit = (float) ($totals?->credit_total ?? 0);
-                        return [
-                            'code' => $account->code,
-                            'name' => $account->name,
-                            // Only net movements; not account closing balances.
-                            'movement' => $type === 'asset' ? $debit - $credit : $credit - $debit,
-                        ];
-                    })->values(),
-                ];
-            });
+        if ($selected !== 'GABUNGAN') {
+            $rows = $rows->where('ledger', $selected);
+        }
+        $term = mb_strtolower(trim($this->search));
+        if ($term !== '') {
+            $rows = $rows->filter(fn ($r) => str_contains(mb_strtolower(implode(' ', [
+                $r['bank_code'], $r['account_code'], $r['account_name'],
+                $r['invoice'], $r['document_number'], $r['channel'], $r['description'],
+            ])), $term));
+        }
 
         return view('livewire.transactions.neraca', [
-            'ledgerRows' => $ledgerRows,
-            'totalBank' => $ledgerRows->sum('ending'),
-            'accountGroups' => $accountGroups,
+            'rows' => $rows->take(500)->values(),
+            'rowCount' => $rows->count(),
+            'summary' => $summary,
+            'totalBalance' => array_sum(array_column($summary, 'ending')),
+            'selectedLedger' => $selected,
+            'periodLabel' => $date->translatedFormat('F Y'),
         ]);
     }
 }

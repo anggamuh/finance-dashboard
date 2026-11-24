@@ -90,7 +90,7 @@
         <a href="{{ route('transactions') }}" @click="sidebarOpen = false"
             class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-white {{ request()->routeIs('transactions*') ? 'bg-emerald-500 text-white' : '' }}">
             <x-heroicon-o-chart-bar class="w-6 h-6 text-emerald-600" />
-            <span>Tambah Transaksi</span>
+            <span>Neraca &amp; Transaksi</span>
         </a>
 
         <a href="{{ route('upload') }}" @click="sidebarOpen = false"
