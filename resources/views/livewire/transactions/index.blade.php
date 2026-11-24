@@ -14,7 +14,7 @@
         </div>
     </div>
     <section x-show="activeView==='neraca'">
-        @livewire(\\App\\Livewire\\Transactions\\Neraca::class)
+        @livewire('transactions.neraca')
     </section>
     <section x-show="activeView==='transaksi'" x-cloak>
 
