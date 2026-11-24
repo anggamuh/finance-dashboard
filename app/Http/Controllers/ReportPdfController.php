@@ -26,7 +26,7 @@ class ReportPdfController extends Controller
             '6999' => 'Beban Operasional lainnya',
         ];
 
-        $expenses = Transaction::query()
+        $expenses = Transaction::query()->whereNull('bank_entry_id')
 
             ->whereNotIn('account_name', [
                 'Bank BCA',
@@ -105,7 +105,7 @@ class ReportPdfController extends Controller
         ];
 
         // Build parent totals using DB-level grouping (match Livewire component)
-        $parentTotals = Transaction::query()
+        $parentTotals = Transaction::query()->whereNull('bank_entry_id')
             ->whereNotIn('account_name', [
                 'Bank BCA',
                 'Petty Cash',
@@ -137,7 +137,7 @@ class ReportPdfController extends Controller
         $grandTotal = 0;
 
         foreach ($parentTotals as $parent) {
-            $children = Transaction::query()
+            $children = Transaction::query()->whereNull('bank_entry_id')
                 ->whereNotIn('account_name', [
                     'Bank BCA',
                     'Petty Cash',
