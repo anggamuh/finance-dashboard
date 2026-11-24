@@ -259,7 +259,7 @@ class Index extends Component
             '5399',
         ];
 
-        return Transaction::query()
+        return Transaction::query()->whereNull('bank_entry_id')
             ->with([
                 'account',
                 'attachments',
