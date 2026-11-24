@@ -325,18 +325,20 @@
                             </td>
 
 
-                            {{-- NOMINAL --}}
-                            <td class="p-4 text-right font-semibold text-gray-900 dark:text-white text-sm">
-
-                                Rp{{ number_format(
-                                    $trx->debit > 0
-                                        ? $trx->debit
-                                        : $trx->credit,
-                                    0,
-                                    ',',
-                                    '.'
-                                ) }}
-
+                            {{-- NOMINAL: old transactions use credit for income, debit for expenses. --}}
+                            <td class="p-4 text-right text-sm">
+                                @php
+                                    $isMoneyIn = $trx->bank_entry_id
+                                        ? $trx->transaction_type === 'income'
+                                        : ((float) $trx->credit > 0 && (float) $trx->debit <= 0);
+                                    $nominal = $isMoneyIn ? $trx->credit : $trx->debit;
+                                @endphp
+                                <div class="font-semibold {{ $isMoneyIn ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}">
+                                    {{ $isMoneyIn ? '+' : '-' }} Rp{{ number_format((float) $nominal, 0, ',', '.') }}
+                                </div>
+                                <span class="text-xs {{ $isMoneyIn ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}">
+                                    {{ $isMoneyIn ? 'Uang Masuk' : 'Uang Keluar' }}
+                                </span>
                             </td>
 
 
