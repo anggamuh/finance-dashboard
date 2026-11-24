@@ -1373,7 +1373,7 @@ class Index extends Component
             ->values()
             ->toArray();
 
-        $accounts = Transaction::query()
+        $accounts = Transaction::query()->whereNull('bank_entry_id')
             ->whereIn('account_code', $accountCodes)
             ->whereNotNull('account_name')
             ->select('account_code', 'account_name')
