@@ -38,6 +38,16 @@ class Index extends Component
         $this->year = now()->year;
         $this->entry_date = now()->toDateString();
         $this->loadOpening();
+        if (request()->filled('edit') && ctype_digit((string) request()->query('edit'))) {
+            $entry = BankEntry::find((int) request()->query('edit'));
+            if ($entry) {
+                $this->ledger = $entry->ledger;
+                $this->month = (int) $entry->entry_date->month;
+                $this->year = (int) $entry->entry_date->year;
+                $this->loadOpening();
+                $this->edit($entry->id);
+            }
+        }
     }
 
     public function updatedLedger(): void { $this->loadOpening(); }
